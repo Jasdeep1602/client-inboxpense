@@ -1,4 +1,10 @@
-@import "tailwindcss";
+/*
+  This MUST be the very first line. It imports Tailwind's base styles,
+  and allows you to use Tailwind directives like @theme.
+*/
+@import 'tailwindcss';
+
+/* Now, you can define your custom styles and variables below. */
 
 :root {
   --background: #ffffff;
@@ -8,6 +14,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Note: You might need to define --font-geist-sans and --font-geist-mono
+     in your layout.tsx if you intend to use them here. */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
