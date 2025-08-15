@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 // Make sure this line exists and the path is correct
 import './globals.css';
+import { Toaster } from '@/components/ui/sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,6 +21,8 @@ export default function RootLayout({
       {/* The `dark` class here will enable dark mode based on the shadcn/ui theme */}
       <body className={`${inter.className} bg-background text-foreground`}>
         {children}
+        <Toaster />
+        {/* Ensure the Toaster component is included in the layout */}
       </body>
     </html>
   );
