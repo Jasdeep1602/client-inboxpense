@@ -1,43 +1,39 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { SyncManager } from '../../../components/SyncManager';
+import { SourceMappingManager } from '../../../components/SourceMappingManager';
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '../../../components/ui/card';
+} from '@/components/ui/card';
 
 /**
  * The main page for the /settings route.
- * Its content will also be rendered as the {children} of the (main)/layout.tsx file.
  */
-export default function SettingsPage() {
-  // Step 1: Protect this route just like the dashboard.
-  //   const jwt = cookies().get('jwt')?.value;
-  //   if (!jwt) {
-  //     redirect('/');
-  //   }
+export default async function SettingsPage() {
+  // Protect the settings page from unauthenticated access.
+  const cookieStore = await cookies();
+  const jwt = cookieStore.get('jwt')?.value;
+  if (!jwt) {
+    redirect('/');
+  }
 
-  // Step 2: Render the components that make up the settings page.
+  // Render the components that make up the settings page.
   return (
     <div className='space-y-6'>
       <Card>
         <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
+          <CardTitle>Settings</CardTitle>
           <CardDescription>
-            Manage your account preferences and data connections.
+            Manage your data connections and automation rules.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {/* We can add user profile editing forms here in the future */}
-          <p className='text-muted-foreground'>
-            Profile management features coming soon.
-          </p>
-        </CardContent>
       </Card>
 
-      {/* The SyncManager component is the main feature of the settings page for now. */}
       <SyncManager />
+      <SourceMappingManager />
     </div>
   );
 }

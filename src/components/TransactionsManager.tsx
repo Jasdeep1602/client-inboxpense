@@ -17,18 +17,17 @@ import {
   CardTitle,
 } from './ui/card';
 import { Button } from './ui/button';
-import { EditTransactionSheet } from './EditTransactionSheet'; // Import the new modal component
+import { Badge } from './ui/badge'; // Import the Badge component
+import { EditTransactionSheet } from './EditTransactionSheet';
 
-// **1. Update the Transaction Type**
-//    The `description` property is now included and optional.
 export type Transaction = {
   _id: string;
   date: string;
   body: string;
-  source: string;
+  source: string; // This is "Me", "Mom", "Dad"
   amount: number;
   type: 'credit' | 'debit';
-  mode: string;
+  mode: string; // This will be "My ICICI Card", "GPay", etc.
   description?: string;
 };
 
@@ -89,9 +88,9 @@ export const TransactionsManager = ({
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Details</TableHead>
-              <TableHead>Source</TableHead>
+              <TableHead>Profile</TableHead> {/* Renamed for clarity */}
+              <TableHead>Account</TableHead> {/* ADDED NEW COLUMN HEADER */}
               <TableHead className='text-right'>Amount</TableHead>
-              {/* **2. Add the "Actions" column header** */}
               <TableHead className='w-[50px] text-right'>
                 <span className='sr-only'>Actions</span>
               </TableHead>
@@ -104,7 +103,6 @@ export const TransactionsManager = ({
                   <TableCell className='text-muted-foreground text-xs'>
                     {formatDate(tx.date)}
                   </TableCell>
-                  {/* **3. Update the "Details" cell to show the description** */}
                   <TableCell className='font-medium max-w-xs'>
                     <p className='truncate' title={tx.body}>
                       {tx.body}
@@ -117,7 +115,16 @@ export const TransactionsManager = ({
                       </p>
                     )}
                   </TableCell>
+                  {/* This column correctly shows the profile: "Me", "Mom", "Dad" */}
                   <TableCell>{tx.source}</TableCell>
+
+                  {/* --- THIS IS THE NEW COLUMN --- */}
+                  {/* This column shows the mapped name, styled as a badge */}
+                  <TableCell>
+                    <Badge variant='outline'>{tx.mode}</Badge>
+                  </TableCell>
+                  {/* --- END NEW COLUMN --- */}
+
                   <TableCell
                     className={`text-right font-semibold ${
                       tx.type === 'debit'
@@ -126,7 +133,6 @@ export const TransactionsManager = ({
                     }`}>
                     ₹{tx.amount.toFixed(2)}
                   </TableCell>
-                  {/* **4. Add the new cell with the Edit button** */}
                   <TableCell className='text-right'>
                     <EditTransactionSheet transaction={tx} />
                   </TableCell>
@@ -134,8 +140,8 @@ export const TransactionsManager = ({
               ))
             ) : (
               <TableRow>
-                {/* **5. Update the column span to match the new number of columns** */}
-                <TableCell colSpan={5} className='h-24 text-center'>
+                {/* Update the colSpan to 6 to account for the new column */}
+                <TableCell colSpan={6} className='h-24 text-center'>
                   No transactions found for this filter.
                 </TableCell>
               </TableRow>
