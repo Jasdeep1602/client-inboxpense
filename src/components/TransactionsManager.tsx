@@ -20,6 +20,7 @@ import {
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { TransactionDetailSheet } from './TransactionDetailSheet';
+import { AddTransactionDialog } from './AddTransactionDialog';
 
 export type Transaction = {
   _id: string;
@@ -76,7 +77,7 @@ export const TransactionsManager = ({
             <CardTitle>Transactions</CardTitle>
             <CardDescription>Your recent financial activity</CardDescription>
           </div>
-          <Button>+ Add Transaction</Button>
+          <AddTransactionDialog />
         </CardHeader>
         <CardContent>
           <div className='flex items-center justify-between mb-4'>
