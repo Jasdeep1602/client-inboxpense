@@ -65,15 +65,13 @@ export const SourceMappingManager = () => {
         const data = await response.json();
         setMappings(data);
       } catch (error) {
-        toast('Error', {
-          description: 'Could not load your source mappings.',
-        });
+        toast.error('Could not load your source mappings.');
       } finally {
         setIsLoading(false);
       }
     };
     fetchMappings();
-  }, [toast]);
+  }, []);
 
   // Function to handle the form submission for creating a new mapping rule
   const onSubmit = async (values: MappingFormData) => {
@@ -108,15 +106,11 @@ export const SourceMappingManager = () => {
 
       const newMapping = await response.json();
       setMappings((prev) => [...prev, newMapping]); // Optimistically add new mapping to the UI
-      toast('Success!', {
-        description: 'New source mapping created.',
-      });
+      toast.success('New source mapping created.');
       setIsDialogOpen(false); // Close the dialog
       reset(); // Reset the form fields
     } catch (error) {
-      toast('Error', {
-        description: 'Could not create mapping.',
-      });
+      toast.error('Could not create mapping.');
     }
   };
 
@@ -129,11 +123,9 @@ export const SourceMappingManager = () => {
         credentials: 'include',
       });
       setMappings((prev) => prev.filter((m) => m._id !== id)); // Optimistically remove from UI
-      toast('Success!', { description: 'Mapping deleted.' });
+      toast.success('Mapping deleted.');
     } catch (error) {
-      toast('Error', {
-        description: 'Could not delete mapping.',
-      });
+      toast.error('Could not delete mapping.');
     }
   };
 

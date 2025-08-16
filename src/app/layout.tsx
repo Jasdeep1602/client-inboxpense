@@ -21,7 +21,7 @@ export default function RootLayout({
       {/* The `dark` class here will enable dark mode based on the shadcn/ui theme */}
       <body className={`${inter.className} bg-background text-foreground`}>
         {children}
-        <Toaster />
+        <Toaster position='top-center' />
         {/* Ensure the Toaster component is included in the layout */}
       </body>
     </html>

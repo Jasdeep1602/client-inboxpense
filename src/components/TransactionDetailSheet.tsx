@@ -66,13 +66,11 @@ export const TransactionDetailSheet = ({
 
       if (!response.ok) throw new Error('Failed to save notes');
 
-      toast('Success!', { description: 'Your notes have been updated.' });
+      toast.success('Your notes have been updated.');
       onOpenChange(false);
       router.refresh();
     } catch (error) {
-      toast('Error', {
-        description: 'Could not save your notes.',
-      });
+      toast.error('Could not save your notes.');
     }
   };
 

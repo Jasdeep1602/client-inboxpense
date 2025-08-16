@@ -99,12 +99,12 @@ export function AddTransactionDialog() {
       );
       if (!response.ok) throw new Error('Failed to create transaction');
 
-      toast('Success!', { description: 'Manual transaction added.' });
+      toast.success('Manual transaction added.');
       setIsOpen(false);
       reset();
       router.refresh();
     } catch (error) {
-      toast('Error', { description: 'Could not add transaction.' });
+      toast.error('Could not add transaction.');
     }
   };
 

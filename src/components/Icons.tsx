@@ -11,12 +11,41 @@ import {
   Gift,
   TrendingUp,
   MoreHorizontal,
+  Coffee,
+  Bike,
+  Smartphone,
+  Wifi,
+  Zap,
+  Flame,
+  Droplets,
+  Home,
+  Repeat,
+  Fuel,
+  Bus,
+  ParkingCircle,
+  Shirt,
+  Laptop,
+  Lamp,
+  Paintbrush,
+  Stethoscope,
+  Pill,
+  Hospital,
+  ShieldCheck,
+  Dumbbell,
+  Scissors,
+  Sparkles,
+  Film,
+  Gamepad2,
+  Landmark,
+  FileSpreadsheet,
+  Dog,
+  Baby,
+  Heart,
+  BedDouble,
   LucideProps,
 } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Import the 'cn' utility from shadcn
 
-// This is our Icon Map.
-// The keys (e.g., "UtensilsCrossed") are the strings we store in our database.
-// The values are the actual React components from the lucide-react library.
 const iconMap = {
   UtensilsCrossed,
   ShoppingBag,
@@ -30,25 +59,81 @@ const iconMap = {
   Gift,
   TrendingUp,
   MoreHorizontal,
+  Coffee,
+  Bike,
+  Smartphone,
+  Wifi,
+  Zap,
+  Flame,
+  Droplets,
+  Home,
+  Repeat,
+  Fuel,
+  Bus,
+  ParkingCircle,
+  Shirt,
+  Laptop,
+  Lamp,
+  Paintbrush,
+  Stethoscope,
+  Pill,
+  Hospital,
+  ShieldCheck,
+  Dumbbell,
+  Scissors,
+  Sparkles,
+  Film,
+  Gamepad2,
+  Landmark,
+  FileSpreadsheet,
+  Dog,
+  Baby,
+  Heart,
+  BedDouble,
 };
 
-// Define the props for our new Icon component
-interface IconProps extends LucideProps {
-  name: keyof typeof iconMap; // 'name' must be one of the keys from our iconMap
-}
+export type IconName = keyof typeof iconMap;
 
-/**
- * A dynamic component that renders a Lucide icon based on a string name.
- */
-export const Icon = ({ name, ...props }: IconProps) => {
-  // Look up the component in our map
-  const LucideIcon = iconMap[name];
+// We use an intersection type to combine our custom props with the standard LucideProps
+type IconProps = {
+  name: IconName | string;
+  categoryName?: string;
+} & LucideProps; // This allows all Lucide props like `className`, `size`, etc.
 
-  // If the icon name is not found, we can render a default or nothing
-  if (!LucideIcon) {
-    return <MoreHorizontal {...props} />; // Fallback to a default icon
+export const Icon = ({
+  name,
+  categoryName,
+  className,
+  ...props
+}: IconProps) => {
+  const isKnownIcon = name in iconMap;
+
+  if (isKnownIcon) {
+    const LucideIcon = iconMap[name as IconName];
+    // We pass the className and all other props to the actual Lucide icon
+    return <LucideIcon className={className} {...props} />;
   }
 
-  // Render the found icon component, passing along any other props like className, size, etc.
-  return <LucideIcon {...props} />;
+  // --- FALLBACK LOGIC FIX ---
+  const getInitials = (nameStr: string = '') => {
+    const words = nameStr.split(' ').filter(Boolean);
+    if (words.length > 1) {
+      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    }
+    return nameStr.substring(0, 2).toUpperCase();
+  };
+
+  // For the div, we ONLY use the `className`. We discard the other SVG-specific props from `...props`.
+  // The `cn` utility safely merges the default classes with any `className` passed in the props.
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center h-full w-full font-bold text-xs',
+        className
+      )}
+      // We do NOT spread `{...props}` here anymore.
+    >
+      {getInitials(categoryName)}
+    </div>
+  );
 };

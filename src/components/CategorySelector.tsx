@@ -83,12 +83,12 @@ export function CategorySelector({
 
       if (!response.ok) throw new Error('Failed to update category');
 
-      toast('Success', { description: 'Transaction category updated.' });
+      toast.success('Transaction category updated.');
       setSelectedCategoryId(newCategoryId || '');
       setOpen(false);
       router.refresh(); // Refresh server components
     } catch (error) {
-      toast('Error', { description: 'Could not update category.' });
+      toast.error('Could not update category.');
     }
   };
 

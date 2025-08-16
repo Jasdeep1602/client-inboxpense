@@ -63,16 +63,12 @@ export function EditTransactionSheet({
         throw new Error(errorData.message || 'Failed to save description');
       }
 
-      toast('Success!', {
-        description: 'Your transaction has been updated.',
-      });
+      toast.success('Your transaction has been updated.');
 
       setIsOpen(false);
       router.refresh();
     } catch (error) {
-      toast('Error', {
-        description: 'Could not save your changes. Please try again.',
-      });
+      toast.error('Could not save your changes. Please try again.');
     }
   };
 
