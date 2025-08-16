@@ -2,12 +2,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SyncManager } from '../../../components/SyncManager';
 import { SourceMappingManager } from '../../../components/SourceMappingManager';
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+
+import { CategoryManager } from '@/components/CategoryManager';
 
 /**
  * The main page for the /settings route.
@@ -23,17 +19,9 @@ export default async function SettingsPage() {
   // Render the components that make up the settings page.
   return (
     <div className='space-y-6'>
-      <Card>
-        <CardHeader>
-          <CardTitle>Settings</CardTitle>
-          <CardDescription>
-            Manage your data connections and automation rules.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
       <SyncManager />
       <SourceMappingManager />
+      <CategoryManager />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Table,
@@ -17,29 +18,33 @@ import {
   CardTitle,
 } from './ui/card';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge'; // Import the Badge component
-import { EditTransactionSheet } from './EditTransactionSheet';
+import { Badge } from './ui/badge';
+import { TransactionDetailSheet } from './TransactionDetailSheet';
 
 export type Transaction = {
   _id: string;
   date: string;
   body: string;
-  source: string; // This is "Me", "Mom", "Dad"
+  source: string;
   amount: number;
   type: 'credit' | 'debit';
-  mode: string; // This will be "My ICICI Card", "GPay", etc.
+  mode: string;
   description?: string;
+  categoryId?: {
+    _id: string;
+    name: string;
+    icon: string;
+    color: string;
+  };
 };
 
 const FILTER_SOURCES = ['All', 'Me', 'Mom', 'Dad'];
 
-const formatDate = (dateString: string) => {
+const formatDateForTable = (dateString: string) => {
   return new Date(dateString).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
   });
 };
 
@@ -53,6 +58,9 @@ export const TransactionsManager = ({
   const searchParams = useSearchParams();
   const activeFilter = searchParams.get('source') || 'All';
 
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
+
   const handleFilterChange = (source: string) => {
     const params = new URLSearchParams(searchParams);
     params.set('page', '1');
@@ -61,94 +69,105 @@ export const TransactionsManager = ({
   };
 
   return (
-    <Card>
-      <CardHeader className='flex-row items-center justify-between'>
-        <div>
-          <CardTitle>Transactions</CardTitle>
-          <CardDescription>Your recent financial activity</CardDescription>
-        </div>
-        <Button>+ Add Transaction</Button>
-      </CardHeader>
-      <CardContent>
-        <div className='flex items-center justify-between mb-4'>
-          <div className='flex space-x-2'>
-            {FILTER_SOURCES.map((source) => (
-              <Button
-                key={source}
-                variant={activeFilter === source ? 'default' : 'secondary'}
-                onClick={() => handleFilterChange(source)}>
-                {source}
-              </Button>
-            ))}
+    <>
+      <Card>
+        <CardHeader className='flex-row items-center justify-between'>
+          <div>
+            <CardTitle>Transactions</CardTitle>
+            <CardDescription>Your recent financial activity</CardDescription>
           </div>
-        </div>
+          <Button>+ Add Transaction</Button>
+        </CardHeader>
+        <CardContent>
+          <div className='flex items-center justify-between mb-4'>
+            <div className='flex space-x-2'>
+              {FILTER_SOURCES.map((source) => (
+                <Button
+                  key={source}
+                  variant={activeFilter === source ? 'default' : 'secondary'}
+                  onClick={() => handleFilterChange(source)}>
+                  {source}
+                </Button>
+              ))}
+            </div>
+          </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Details</TableHead>
-              <TableHead>Profile</TableHead> {/* Renamed for clarity */}
-              <TableHead>Account</TableHead> {/* ADDED NEW COLUMN HEADER */}
-              <TableHead className='text-right'>Amount</TableHead>
-              <TableHead className='w-[50px] text-right'>
-                <span className='sr-only'>Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {initialTransactions && initialTransactions.length > 0 ? (
-              initialTransactions.map((tx) => (
-                <TableRow key={tx._id}>
-                  <TableCell className='text-muted-foreground text-xs'>
-                    {formatDate(tx.date)}
-                  </TableCell>
-                  <TableCell className='font-medium max-w-xs'>
-                    <p className='truncate' title={tx.body}>
-                      {tx.body}
-                    </p>
-                    {tx.description && (
-                      <p
-                        className='text-xs text-muted-foreground italic truncate'
-                        title={tx.description}>
-                        {tx.description}
-                      </p>
-                    )}
-                  </TableCell>
-                  {/* This column correctly shows the profile: "Me", "Mom", "Dad" */}
-                  <TableCell>{tx.source}</TableCell>
-
-                  {/* --- THIS IS THE NEW COLUMN --- */}
-                  {/* This column shows the mapped name, styled as a badge */}
-                  <TableCell>
-                    <Badge variant='outline'>{tx.mode}</Badge>
-                  </TableCell>
-                  {/* --- END NEW COLUMN --- */}
-
-                  <TableCell
-                    className={`text-right font-semibold ${
-                      tx.type === 'debit'
-                        ? 'text-destructive'
-                        : 'text-green-600'
-                    }`}>
-                    ₹{tx.amount.toFixed(2)}
-                  </TableCell>
-                  <TableCell className='text-right'>
-                    <EditTransactionSheet transaction={tx} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className='w-[150px]'>Date</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className='text-right'>Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {initialTransactions && initialTransactions.length > 0 ? (
+                initialTransactions.map((tx) => (
+                  <TableRow
+                    key={tx._id}
+                    onClick={() => setSelectedTransaction(tx)}
+                    className='cursor-pointer hover:bg-muted/50'>
+                    <TableCell className='text-muted-foreground text-xs'>
+                      {formatDateForTable(tx.date)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant='outline'>{tx.mode}</Badge>
+                    </TableCell>
+                    {/* The category is now a simple, non-interactive badge */}
+                    <TableCell>
+                      {tx.categoryId ? (
+                        <Badge
+                          variant='outline'
+                          style={{
+                            borderColor: tx.categoryId.color,
+                            color: tx.categoryId.color,
+                          }}>
+                          {tx.categoryId.name}
+                        </Badge>
+                      ) : (
+                        <span className='text-xs text-muted-foreground'>
+                          Uncategorized
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className='text-xs text-muted-foreground italic truncate max-w-[200px]'>
+                      {tx.description}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-semibold ${
+                        tx.type === 'debit'
+                          ? 'text-destructive'
+                          : 'text-green-600'
+                      }`}>
+                      ₹{tx.amount.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className='h-24 text-center'>
+                    No transactions found.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                {/* Update the colSpan to 6 to account for the new column */}
-                <TableCell colSpan={6} className='h-24 text-center'>
-                  No transactions found for this filter.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {selectedTransaction && (
+        <TransactionDetailSheet
+          transaction={selectedTransaction}
+          isOpen={!!selectedTransaction}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedTransaction(null);
+            }
+          }}
+        />
+      )}
+    </>
   );
 };
