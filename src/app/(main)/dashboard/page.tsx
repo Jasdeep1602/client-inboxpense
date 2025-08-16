@@ -3,11 +3,15 @@ import { redirect } from 'next/navigation';
 import {
   TransactionsManager,
   type Transaction,
+  type TransactionGroup,
 } from '../../../components/TransactionsManager';
 import { PaginationController } from '@/components/PaginationController';
+import { SyncManager } from '@/components/SyncManager';
 
+// Define the shape of the API response, which can now have two different data types.
 type ApiResponse = {
-  data: Transaction[];
+  type: 'list' | 'grouped';
+  data: Transaction[] | TransactionGroup[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -15,53 +19,62 @@ type ApiResponse = {
   };
 };
 
-// --- THIS IS THE FIX (PART 1) ---
-// The data fetching function MUST accept the source filter as an argument.
-async function getPaginatedTransactions(
+/**
+ * A Server Function to fetch transactions from the backend.
+ * It now includes the `groupBy` parameter to support time-based grouping.
+ */
+async function getTransactions(
   currentPage: number,
-  source: string // <-- Added source parameter
+  source: string,
+  groupBy: string
 ): Promise<ApiResponse> {
   const cookieStore = await cookies();
   const jwt = cookieStore.get('jwt')?.value;
   if (!jwt) {
+    // Return a default empty state if the user is not authenticated.
     return {
+      type: 'list',
       data: [],
       pagination: { currentPage: 1, totalPages: 1, totalItems: 0 },
     };
   }
 
-  // Now, the API URL will correctly include the source filter.
-  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/transactions?page=${currentPage}&limit=10&source=${source}`;
+  // Construct the API URL with all three dynamic parameters.
+  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/transactions?page=${currentPage}&limit=10&source=${source}&groupBy=${groupBy}`;
   console.log(`--- FRONTEND: Fetching from API: ${apiUrl} ---`);
 
   try {
     const response = await fetch(apiUrl, {
       headers: { Cookie: `jwt=${jwt}` },
-      cache: 'no-store',
+      cache: 'no-store', // Ensures fresh data on every request
     });
 
     if (!response.ok) {
       console.error('FRONTEND: API Error:', await response.text());
       return {
+        type: 'list',
         data: [],
         pagination: { currentPage: 1, totalPages: 1, totalItems: 0 },
       };
     }
 
     const result = await response.json();
-    console.log(
-      `FRONTEND: Successfully received ${result.data.length} transactions for source "${source}".`
-    );
     return result;
   } catch (error) {
     console.error('FRONTEND: Fetch Error:', error);
     return {
+      type: 'list',
       data: [],
       pagination: { currentPage: 1, totalPages: 1, totalItems: 0 },
     };
   }
 }
 
+/**
+ * The main server component for the dashboard page.
+ * It reads all filter parameters from the URL, fetches the appropriate data,
+ * and passes it down to the client components.
+ */
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -71,24 +84,26 @@ export default async function DashboardPage({
   const jwt = cookieStore.get('jwt')?.value;
   if (!jwt) redirect('/');
 
-  // --- THIS IS THE FIX (PART 2) ---
-  // Read both 'page' and 'source' from the URL search parameters.
+  // Read all three parameters from the URL, providing safe defaults.
   const currentPage = Number(searchParams['page']) || 1;
-  const currentSource = (searchParams['source'] as string) || 'All'; // Default to 'All'
+  const currentSource = (searchParams['source'] as string) || 'All';
+  const currentGroupBy = (searchParams['groupBy'] as string) || 'none';
 
   console.log(
-    `FRONTEND: DashboardPage rendering for page: ${currentPage}, source: ${currentSource}`
+    `FRONTEND: Rendering for page: ${currentPage}, source: ${currentSource}, groupBy: ${currentGroupBy}`
   );
 
-  // Pass BOTH parameters to the data fetching function.
-  const { data: transactions, pagination } = await getPaginatedTransactions(
+  // Fetch the data from the backend using all three parameters.
+  const { type, data, pagination } = await getTransactions(
     currentPage,
-    currentSource
+    currentSource,
+    currentGroupBy
   );
 
   return (
+    // Note: The SyncManager has been removed from here as it is now on the Settings page.
     <div className='space-y-6'>
-      <TransactionsManager initialTransactions={transactions} />
+      <TransactionsManager dataType={type} transactionData={data} />
       <PaginationController totalPages={pagination.totalPages} />
     </div>
   );

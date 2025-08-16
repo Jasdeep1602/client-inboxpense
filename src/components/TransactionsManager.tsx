@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Table,
@@ -19,9 +18,12 @@ import {
 } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { CategorySelector } from './CategorySelector';
 import { TransactionDetailSheet } from './TransactionDetailSheet';
+import { useState } from 'react';
 import { AddTransactionDialog } from './AddTransactionDialog';
 
+// Define the shape of a single transaction
 export type Transaction = {
   _id: string;
   date: string;
@@ -39,33 +41,95 @@ export type Transaction = {
   };
 };
 
-const FILTER_SOURCES = ['All', 'Me', 'Mom', 'Dad'];
+// Define the shape for the new grouped data structure
+export type TransactionGroup = {
+  period: string; // e.g., "2025-08" for month, "2025-33" for week
+  totalCredit: number;
+  totalDebit: number;
+  transactions: Transaction[];
+};
 
-const formatDateForTable = (dateString: string) => {
-  return new Date(dateString).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+// Props for the main component, which now accepts two possible data structures
+interface TransactionsManagerProps {
+  dataType: 'list' | 'grouped';
+  transactionData: Transaction[] | TransactionGroup[];
+}
+
+// Reusable row component to avoid code duplication
+const TransactionRow = ({
+  tx,
+  onRowClick,
+}: {
+  tx: Transaction;
+  onRowClick: (transaction: Transaction) => void;
+}) => (
+  <TableRow
+    onClick={() => onRowClick(tx)}
+    className='cursor-pointer hover:bg-muted/50'>
+    <TableCell className='text-muted-foreground text-xs'>
+      {new Date(tx.date).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })}
+    </TableCell>
+    <TableCell>
+      <Badge variant='outline'>{tx.mode}</Badge>
+    </TableCell>
+    <TableCell>
+      <CategorySelector transaction={tx} />
+    </TableCell>
+    <TableCell className='text-xs text-muted-foreground italic truncate max-w-[200px]'>
+      {tx.description}
+    </TableCell>
+    <TableCell
+      className={`text-right font-semibold ${
+        tx.type === 'debit' ? 'text-destructive' : 'text-green-600'
+      }`}>
+      ₹{tx.amount.toFixed(2)}
+    </TableCell>
+  </TableRow>
+);
+
+// Helper to format the group period name into something readable
+const formatGroupName = (period: string) => {
+  // Monthly format: "2025-08"
+  if (period.includes('-') && period.length === 7) {
+    const [year, month] = period.split('-');
+    return new Date(Number(year), Number(month) - 1).toLocaleString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+  // Weekly format: "2025-33"
+  if (period.includes('-')) {
+    const [year, week] = period.split('-');
+    return `Week ${week}, ${year}`;
+  }
+  return period;
 };
 
 export const TransactionsManager = ({
-  initialTransactions,
-}: {
-  initialTransactions: Transaction[];
-}) => {
+  dataType,
+  transactionData,
+}: TransactionsManagerProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeFilter = searchParams.get('source') || 'All';
 
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
 
-  const handleFilterChange = (source: string) => {
+  const activeGroupBy = searchParams.get('groupBy') || 'none';
+  const activeFilter = searchParams.get('source') || 'All';
+
+  const handleFilterChange = (
+    filterType: 'source' | 'groupBy',
+    value: string
+  ) => {
     const params = new URLSearchParams(searchParams);
     params.set('page', '1');
-    params.set('source', source);
+    params.set(filterType, value);
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -75,86 +139,94 @@ export const TransactionsManager = ({
         <CardHeader className='flex-row items-center justify-between'>
           <div>
             <CardTitle>Transactions</CardTitle>
-            <CardDescription>Your recent financial activity</CardDescription>
+            <CardDescription>Your financial activity</CardDescription>
           </div>
           <AddTransactionDialog />
         </CardHeader>
         <CardContent>
-          <div className='flex items-center justify-between mb-4'>
+          <div className='flex items-center justify-between mb-4 flex-wrap gap-4'>
             <div className='flex space-x-2'>
-              {FILTER_SOURCES.map((source) => (
+              {['All', 'Me', 'Mom', 'Dad'].map((source) => (
                 <Button
                   key={source}
                   variant={activeFilter === source ? 'default' : 'secondary'}
-                  onClick={() => handleFilterChange(source)}>
+                  onClick={() => handleFilterChange('source', source)}>
                   {source}
+                </Button>
+              ))}
+            </div>
+            <div className='flex space-x-2'>
+              {['none', 'week', 'month'].map((group) => (
+                <Button
+                  key={group}
+                  variant={activeGroupBy === group ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => handleFilterChange('groupBy', group)}>
+                  {group.charAt(0).toUpperCase() + group.slice(1)}
                 </Button>
               ))}
             </div>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className='w-[150px]'>Date</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className='text-right'>Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {initialTransactions && initialTransactions.length > 0 ? (
-                initialTransactions.map((tx) => (
-                  <TableRow
-                    key={tx._id}
-                    onClick={() => setSelectedTransaction(tx)}
-                    className='cursor-pointer hover:bg-muted/50'>
-                    <TableCell className='text-muted-foreground text-xs'>
-                      {formatDateForTable(tx.date)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant='outline'>{tx.mode}</Badge>
-                    </TableCell>
-                    {/* The category is now a simple, non-interactive badge */}
-                    <TableCell>
-                      {tx.categoryId ? (
-                        <Badge
-                          variant='outline'
-                          style={{
-                            borderColor: tx.categoryId.color,
-                            color: tx.categoryId.color,
-                          }}>
-                          {tx.categoryId.name}
-                        </Badge>
-                      ) : (
-                        <span className='text-xs text-muted-foreground'>
-                          Uncategorized
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className='text-xs text-muted-foreground italic truncate max-w-[200px]'>
-                      {tx.description}
-                    </TableCell>
-                    <TableCell
-                      className={`text-right font-semibold ${
-                        tx.type === 'debit'
-                          ? 'text-destructive'
-                          : 'text-green-600'
-                      }`}>
-                      ₹{tx.amount.toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          {dataType === 'grouped' ? (
+            <div className='space-y-6'>
+              {(transactionData as TransactionGroup[]).map((group) => (
+                <div key={group.period}>
+                  <div className='flex justify-between items-center bg-muted p-3 rounded-lg border'>
+                    <h3 className='font-semibold text-sm'>
+                      {formatGroupName(group.period)}
+                    </h3>
+                    <div className='text-xs space-x-4'>
+                      <span className='text-green-600 font-medium'>
+                        Credit: ₹{group.totalCredit.toFixed(2)}
+                      </span>
+                      <span className='text-destructive font-medium'>
+                        Debit: ₹{group.totalDebit.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      {group.transactions.map((tx) => (
+                        <TransactionRow
+                          key={tx._id}
+                          tx={tx}
+                          onRowClick={setSelectedTransaction}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className='h-24 text-center'>
-                    No transactions found.
-                  </TableCell>
+                  <TableHead className='w-[150px]'>Date</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className='text-right'>Amount</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(transactionData as Transaction[]).map((tx) => (
+                  <TransactionRow
+                    key={tx._id}
+                    tx={tx}
+                    onRowClick={setSelectedTransaction}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          )}
+
+          {transactionData.length === 0 && (
+            <div className='text-center h-24 flex items-center justify-center text-muted-foreground'>
+              No transactions found for this filter.
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -162,11 +234,7 @@ export const TransactionsManager = ({
         <TransactionDetailSheet
           transaction={selectedTransaction}
           isOpen={!!selectedTransaction}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedTransaction(null);
-            }
-          }}
+          onOpenChange={(open) => !open && setSelectedTransaction(null)}
         />
       )}
     </>
