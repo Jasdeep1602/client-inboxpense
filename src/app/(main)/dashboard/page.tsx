@@ -57,14 +57,13 @@ async function getTransactions(
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // --- NO MORE COOKIE CHECKS OR REDIRECTS ---
-  // If this code runs, the user is authenticated, guaranteed by middleware.ts.
+  const params = await searchParams;
 
-  const currentPage = Number(searchParams.page) || 1;
-  const currentSource = (searchParams.source as string) || 'All';
-  const currentGroupBy = (searchParams.groupBy as string) || 'none';
+  const currentPage = Number(params.page) || 1;
+  const currentSource = (params.source as string) || 'All';
+  const currentGroupBy = (params.groupBy as string) || 'none';
 
   const { type, data, pagination } = await getTransactions(
     currentPage,
@@ -75,7 +74,6 @@ export default async function DashboardPage({
   return (
     <div className='space-y-6'>
       <TransactionsManager dataType={type} transactionData={data} />
-      {/* The pagination object is guaranteed to exist due to our robust getTransactions function */}
       <PaginationController totalPages={pagination.totalPages} />
     </div>
   );
