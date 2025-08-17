@@ -2,11 +2,11 @@ import {
   TransactionsManager,
   type Transaction,
   type TransactionGroup,
-} from '@/components/TransactionsManager';
+} from '../../../components/TransactionsManager';
 import { PaginationController } from '@/components/PaginationController';
-import { authenticatedFetch } from '@/lib/api'; // We use our helper for clean data fetching
+import { authenticatedFetch } from '@/lib/api';
 
-// Define the shape of the API response from our backend.
+// This is the correct, full type for the entire API response.
 type ApiResponse = {
   type: 'list' | 'grouped';
   data: Transaction[] | TransactionGroup[];
@@ -18,21 +18,22 @@ type ApiResponse = {
 };
 
 /**
- * A Server Function to fetch transactions. It is now cleaner because
- * the authenticatedFetch helper handles the cookie logic.
+ * A clean Server Function to fetch transactions. It uses our authenticatedFetch helper
+ * and is guaranteed to always return a valid ApiResponse object.
  */
 async function getTransactions(
   currentPage: number,
   source: string,
   groupBy: string
 ): Promise<ApiResponse> {
-  const defaultResponse = {
-    type: 'list' as const,
+  const defaultResponse: ApiResponse = {
+    type: 'list',
     data: [],
     pagination: { currentPage: 1, totalPages: 1, totalItems: 0 },
   };
 
   try {
+    // authenticatedFetch handles the cookie logic for us.
     const response = await authenticatedFetch(
       `/api/transactions?page=${currentPage}&limit=10&source=${source}&groupBy=${groupBy}`
     );
@@ -51,22 +52,20 @@ async function getTransactions(
 
 /**
  * The main server component for the dashboard page.
- * It is now much cleaner as the middleware handles security.
- * It remains an 'async' function because it needs to 'await' the data fetching.
+ * It is now free of security logic, as the middleware handles it.
  */
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  // --- All cookie checks and redirects are now REMOVED from this page. ---
-  // The middleware protects this route before this code even runs.
+  // --- NO MORE COOKIE CHECKS OR REDIRECTS ---
+  // If this code runs, the user is authenticated, guaranteed by middleware.ts.
 
-  const currentPage = Number(searchParams['page']) || 1;
-  const currentSource = (searchParams['source'] as string) || 'All';
-  const currentGroupBy = (searchParams['groupBy'] as string) || 'none';
+  const currentPage = Number(searchParams.page) || 1;
+  const currentSource = (searchParams.source as string) || 'All';
+  const currentGroupBy = (searchParams.groupBy as string) || 'none';
 
-  // We still `await` the result of our data fetching function.
   const { type, data, pagination } = await getTransactions(
     currentPage,
     currentSource,
@@ -76,6 +75,7 @@ export default async function DashboardPage({
   return (
     <div className='space-y-6'>
       <TransactionsManager dataType={type} transactionData={data} />
+      {/* The pagination object is guaranteed to exist due to our robust getTransactions function */}
       <PaginationController totalPages={pagination.totalPages} />
     </div>
   );

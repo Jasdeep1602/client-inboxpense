@@ -60,12 +60,13 @@ interface TransactionsManagerProps {
   dataType: 'list' | 'grouped';
   transactionData: Transaction[] | TransactionGroup[];
 }
+const formatGroupName = (period: string, groupBy: string) => {
+  // Use the groupBy parameter to decide which format to use.
+  if (groupBy === 'month') {
+    // FIX: Use `of` for array destructuring and assert the type.
+    const [year, month] = period.split('-') as [string, string];
 
-// --- Helper function to format the group period name into something user-friendly ---
-const formatGroupName = (period: string) => {
-  // Monthly format: "2025-08" - This part is correct.
-  if (/^\d{4}-\d{2}$/.test(period) && period.length === 7) {
-    const [year, month] = period.split('-');
+    // Create a UTC date to avoid timezone issues.
     return new Date(Date.UTC(Number(year), Number(month) - 1)).toLocaleString(
       'en-US',
       {
@@ -76,33 +77,17 @@ const formatGroupName = (period: string) => {
     );
   }
 
-  // Weekly format: "2025-33" - This is the new, correct logic.
-  if (/^\d{4}-\d{2}$/.test(period)) {
-    const [yearStr, weekStr] = period.split('-');
-    const year = Number(yearStr);
-    const weekNumber = Number(weekStr);
-
-    // This function calculates the date of the first day (Sunday) of a given week.
-    const getStartDateOfWeek = (y: number, w: number) => {
-      const simple = new Date(Date.UTC(y, 0, 1 + (w - 1) * 7));
-      const dayOfWeek = simple.getUTCDay();
-      const isoWeekStart = simple;
-      isoWeekStart.setUTCDate(simple.getUTCDate() - dayOfWeek);
-      return isoWeekStart;
-    };
-
-    const startDate = getStartDateOfWeek(year, weekNumber);
+  if (groupBy === 'week') {
+    const startDate = new Date(period);
     const endDate = new Date(startDate);
-    endDate.setUTCDate(startDate.getUTCDate() + 6);
+    endDate.setDate(startDate.getDate() + 6);
 
     const options: Intl.DateTimeFormatOptions = {
       month: 'short',
       day: 'numeric',
-      timeZone: 'UTC',
     };
 
-    // Check if the week spans across different months or years for correct formatting
-    if (startDate.getUTCFullYear() !== endDate.getUTCFullYear()) {
+    if (startDate.getFullYear() !== endDate.getFullYear()) {
       return `${startDate.toLocaleDateString('en-US', {
         ...options,
         year: 'numeric',
@@ -111,21 +96,22 @@ const formatGroupName = (period: string) => {
         year: 'numeric',
       })}`;
     }
-    if (startDate.getUTCMonth() !== endDate.getUTCMonth()) {
+    if (startDate.getMonth() !== endDate.getMonth()) {
       return `${startDate.toLocaleDateString(
         'en-US',
         options
-      )} - ${endDate.toLocaleDateString('en-US', options)}, ${year}`;
+      )} - ${endDate.toLocaleDateString(
+        'en-US',
+        options
+      )}, ${startDate.getFullYear()}`;
     }
     return `${startDate.toLocaleString('en-US', {
       month: 'short',
-      timeZone: 'UTC',
-    })} ${startDate.getUTCDate()} - ${endDate.getUTCDate()}, ${year}`;
+    })} ${startDate.getDate()} - ${endDate.getDate()}, ${startDate.getFullYear()}`;
   }
 
-  return period; // Fallback
+  return period;
 };
-
 // --- Reusable Component for a single Table Row ---
 const TransactionRow = ({
   tx,
@@ -171,14 +157,14 @@ const TransactionRow = ({
         </div>
       )}
     </TableCell>
+    <TableCell className='text-xs text-muted-foreground italic truncate max-w-[200px]'>
+      {tx.description}
+    </TableCell>
     <TableCell
       className={`text-right font-semibold ${
         tx.type === 'debit' ? 'text-destructive' : 'text-green-600'
       }`}>
       ₹{tx.amount.toFixed(2)}
-    </TableCell>
-    <TableCell className='text-xs text-muted-foreground italic truncate max-w-[200px]'>
-      {tx.description}
     </TableCell>
   </TableRow>
 );
@@ -190,8 +176,9 @@ const TransactionsTableHeader = () => (
       <TableHead className='w-[150px]'>Date</TableHead>
       <TableHead>Account</TableHead>
       <TableHead>Category</TableHead>
-      <TableHead className='text-right'>Amount</TableHead>
       <TableHead>Description</TableHead>
+
+      <TableHead className='text-right'>Amount</TableHead>
     </TableRow>
   </TableHeader>
 );
@@ -259,7 +246,7 @@ export const TransactionsManager = ({
                 <div key={group.period}>
                   <div className='flex justify-between items-center bg-muted p-3 rounded-t-lg border'>
                     <h3 className='font-semibold text-sm'>
-                      {formatGroupName(group.period)}
+                      {formatGroupName(group.period, activeGroupBy)}
                     </h3>
                     <div className='text-xs space-x-4'>
                       <span className='text-green-600 font-medium'>
