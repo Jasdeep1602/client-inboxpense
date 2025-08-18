@@ -1,38 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import {
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  Cell,
-  Legend,
-} from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import ApexChart from './ApexChart';
+import { ApexOptions } from 'apexcharts';
 
-// This is the correct, complex type that the API sends.
+// This is the data structure provided by the analytics page
 type CategorySpendingData = {
   month: string;
-  categories: {
-    id: string;
-    name: string;
-    color: string;
-    total: number;
-  }[];
+  categories: { id: string; name: string; color: string; total: number }[];
   monthlyTotal: number;
-};
-
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className='p-2 text-sm bg-background border rounded-lg shadow-lg'>
-        <p className='font-semibold'>{`${
-          payload[0].name
-        }: ₹${payload[0].value.toFixed(2)}`}</p>
-      </div>
-    );
-  }
-  return null;
 };
 
 export const CategorySpendingChart = ({
@@ -40,13 +16,10 @@ export const CategorySpendingChart = ({
 }: {
   data: CategorySpendingData[];
 }) => {
-  console.log('data', data);
-  // --- THIS IS THE FIX ---
-  // We correctly aggregate the nested data on the client to prepare it for the pie chart.
+  // --- Aggregate the nested data into a simple format for the chart ---
   const aggregatedData = data
-    .flatMap((month) => month.categories) // 1. Flatten the array of months into a single array of all categories
+    .flatMap((month) => month.categories)
     .reduce((acc, category) => {
-      // 2. Sum up the totals for each unique category name
       const existing = acc.find((item) => item.name === category.name);
       if (existing) {
         existing.value += category.total;
@@ -59,8 +32,93 @@ export const CategorySpendingChart = ({
       }
       return acc;
     }, [] as { name: string; value: number; color: string }[])
-    .sort((a, b) => b.value - a.value); // Sort by highest spending
-  // --- END FIX ---
+    .sort((a, b) => b.value - a.value);
+
+  // --- Prepare Data & Options for the ApexCharts Radial Bar Chart ---
+
+  // The `series` for a radial bar is an array of percentage values.
+  const totalSpending = aggregatedData.reduce(
+    (sum, item) => sum + item.value,
+    0
+  );
+  const series =
+    totalSpending > 0
+      ? aggregatedData.map((item) =>
+          parseFloat(((item.value / totalSpending) * 100).toFixed(2))
+        )
+      : [];
+
+  // The labels and colors are used by the chart options.
+  const labels = aggregatedData.map((item) => item.name);
+  const colors = aggregatedData.map((item) => item.color);
+
+  const chartOptions: ApexOptions = {
+    chart: {
+      type: 'radialBar',
+      height: 300,
+      toolbar: { show: false },
+    },
+    plotOptions: {
+      radialBar: {
+        hollow: {
+          margin: 15,
+          size: '30%',
+        },
+        dataLabels: {
+          show: false,
+        },
+        track: {
+          background: '#f1f5f9', // A light gray track for light mode
+          // In a full dark mode implementation, you'd make this dynamic
+        },
+      },
+    },
+    colors: colors,
+    labels: labels,
+    legend: {
+      show: true,
+      position: 'bottom',
+      horizontalAlign: 'center',
+      itemMargin: {
+        horizontal: 10,
+        vertical: 5,
+      },
+      labels: {
+        colors: '#64748b',
+      },
+      onItemHover: {
+        highlightDataSeries: true,
+      },
+    },
+    stroke: {
+      lineCap: 'round',
+    },
+
+    // --- Custom Tooltip Configuration ---
+    tooltip: {
+      enabled: true,
+      // This custom function gives us full control over the tooltip's content and appearance.
+      custom: function ({ seriesIndex, w }) {
+        const categoryName = w.globals.labels[seriesIndex];
+        // Find the original, non-percentage data point to get the true spending amount.
+        const originalDataPoint = aggregatedData.find(
+          (d) => d.name === categoryName
+        );
+        const amount = originalDataPoint ? originalDataPoint.value : 0;
+
+        // Return a custom HTML string for the tooltip.
+        return `
+          <div class="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg">
+            <span class="font-semibold text-slate-800 dark:text-slate-200">${categoryName}:</span>
+            <span class="text-slate-600 dark:text-slate-400 ml-2">₹${amount.toFixed(
+              2
+            )}</span>
+          </div>
+        `;
+      },
+    },
+    // --- End Custom Tooltip ---
+  };
 
   if (!aggregatedData || aggregatedData.length === 0) {
     return (
@@ -71,34 +129,19 @@ export const CategorySpendingChart = ({
   }
 
   return (
-    <ResponsiveContainer width='100%' height={300}>
-      <PieChart>
-        <Tooltip content={<CustomTooltip />} />
-        <Pie
-          data={aggregatedData}
-          cx='50%'
-          cy='50%'
-          labelLine={false}
-          innerRadius={60}
-          outerRadius={100}
-          paddingAngle={5}
-          fill='#8884d8'
-          dataKey='value'
-          nameKey='name'>
-          {aggregatedData.map((entry) => (
-            <Cell key={`cell-${entry.name}`} fill={entry.color} />
-          ))}
-        </Pie>
-        <Legend
-          iconType='circle'
-          layout='vertical'
-          verticalAlign='middle'
-          align='right'
-          formatter={(value) => (
-            <span className='text-muted-foreground'>{value}</span>
-          )}
+    <Card>
+      <CardHeader>
+        <CardTitle>Spending by Category</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* We pass the prepared options and series data to our client-side chart wrapper. */}
+        <ApexChart
+          options={chartOptions}
+          series={series}
+          type='radialBar'
+          height={300}
         />
-      </PieChart>
-    </ResponsiveContainer>
+      </CardContent>
+    </Card>
   );
 };

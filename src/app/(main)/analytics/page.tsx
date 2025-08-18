@@ -55,9 +55,10 @@ async function getCategorySpending(
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const currentSource = (searchParams.source as string) || 'All';
+  const params = await searchParams;
+  const currentSource = (params.source as string) || 'All';
 
   const [monthlySummary, categorySpending] = await Promise.all([
     getMonthlySummary(currentSource),

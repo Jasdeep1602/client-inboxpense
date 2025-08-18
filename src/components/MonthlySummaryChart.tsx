@@ -1,15 +1,8 @@
 'use client';
 
-import {
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  CartesianGrid,
-} from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import ApexChart from './ApexChart';
+import { ApexOptions } from 'apexcharts';
 
 type MonthlySummaryData = {
   month: string;
@@ -29,13 +22,52 @@ export const MonthlySummaryChart = ({
 }: {
   data: MonthlySummaryData[];
 }) => {
-  const chartData = data.map((item) => ({
-    name: formatMonth(item.month),
-    Credit: item.totalCredit,
-    Debit: item.totalDebit,
-  }));
+  // --- Prepare the data and options for ApexCharts ---
+  const categories = data.map((item) => formatMonth(item.month));
+  const creditData = data.map((item) => item.totalCredit);
+  const debitData = data.map((item) => item.totalDebit);
 
-  if (!chartData || chartData.length === 0) {
+  const chartOptions: ApexOptions = {
+    chart: {
+      type: 'bar',
+      height: 300,
+      stacked: false,
+      toolbar: { show: false },
+    },
+    plotOptions: { bar: { horizontal: false, columnWidth: '55%' } },
+    dataLabels: { enabled: false },
+    stroke: { show: true, width: 2, colors: ['transparent'] },
+    xaxis: { categories: categories, labels: { style: { colors: '#64748b' } } },
+    yaxis: {
+      title: { text: undefined },
+      labels: {
+        style: { colors: '#64748b' },
+        formatter: (val) => `₹${val / 1000}k`,
+      },
+    },
+    fill: { opacity: 1 },
+    tooltip: { y: { formatter: (val) => `₹${val.toFixed(2)}` } },
+    colors: ['#22c55e', '#ef4444'], // Green for credit, Red for debit
+    legend: {
+      position: 'bottom',
+      horizontalAlign: 'center',
+      offsetY: 10,
+      labels: { colors: '#64748b' },
+    },
+    grid: {
+      borderColor: '#e2e8f0',
+      strokeDashArray: 4,
+      yaxis: { lines: { show: true } },
+      xaxis: { lines: { show: false } },
+    },
+  };
+
+  const series = [
+    { name: 'Credit', data: creditData },
+    { name: 'Debit', data: debitData },
+  ];
+
+  if (!data || data.length === 0) {
     return (
       <div className='h-[300px] flex items-center justify-center text-muted-foreground text-sm'>
         No monthly data to display.
@@ -44,38 +76,18 @@ export const MonthlySummaryChart = ({
   }
 
   return (
-    <ResponsiveContainer width='100%' height={300}>
-      <BarChart
-        data={chartData}
-        margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray='3 3' vertical={false} />
-        <XAxis
-          dataKey='name'
-          stroke='hsl(var(--muted-foreground))'
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
+    <Card>
+      <CardHeader>
+        <CardTitle>Monthly Summary</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ApexChart
+          options={chartOptions}
+          series={series}
+          type='bar'
+          height={300}
         />
-        <YAxis
-          stroke='hsl(var(--muted-foreground))'
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(value) => `₹${Number(value) / 1000}k`}
-        />
-        <Tooltip
-          cursor={{ fill: 'hsl(var(--muted))' }}
-          contentStyle={{
-            backgroundColor: 'hsl(var(--background))',
-            border: '1px solid hsl(var(--border))',
-            borderRadius: 'var(--radius)',
-          }}
-          formatter={(value: number) => `₹${value.toFixed(2)}`}
-        />
-        <Legend iconType='circle' />
-        <Bar dataKey='Credit' fill='#22c55e' radius={[4, 4, 0, 0]} />
-        <Bar dataKey='Debit' fill='#ef4444' radius={[4, 4, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+      </CardContent>
+    </Card>
   );
 };
