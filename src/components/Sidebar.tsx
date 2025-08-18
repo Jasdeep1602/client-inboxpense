@@ -8,6 +8,7 @@ export const Sidebar = () => {
 
   const navItems = [
     { name: 'Transactions', href: '/dashboard' },
+    { name: 'Analytics', href: '/analytics' },
     { name: 'Settings', href: '/settings' },
   ];
 
