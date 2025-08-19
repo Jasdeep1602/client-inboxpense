@@ -30,3 +30,37 @@ export const AnalyticsFilters = () => {
     </div>
   );
 };
+
+export const AnalyticsPeriodFilters = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activePeriod = searchParams.get('period') || '6m';
+
+  const handleFilterChange = (period: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('period', period);
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const periods = [
+    { label: '30 Days', value: '30d' },
+    { label: '3 Months', value: '3m' },
+    { label: '6 Months', value: '6m' },
+    { label: 'All Time', value: 'all' },
+  ];
+
+  return (
+    <div className='flex space-x-2'>
+      {periods.map((period) => (
+        <Button
+          key={period.value}
+          variant={activePeriod === period.value ? 'default' : 'outline'}
+          size='sm'
+          onClick={() => handleFilterChange(period.value)}>
+          {period.label}
+        </Button>
+      ))}
+    </div>
+  );
+};

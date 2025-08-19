@@ -1,4 +1,4 @@
-'use client';
+'use client'; // <-- THIS IS THE MOST IMPORTANT CHANGE
 
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import ApexChart from './ApexChart';
@@ -35,8 +35,6 @@ export const CategorySpendingChart = ({
     .sort((a, b) => b.value - a.value);
 
   // --- Prepare Data & Options for the ApexCharts Radial Bar Chart ---
-
-  // The `series` for a radial bar is an array of percentage values.
   const totalSpending = aggregatedData.reduce(
     (sum, item) => sum + item.value,
     0
@@ -48,7 +46,6 @@ export const CategorySpendingChart = ({
         )
       : [];
 
-  // The labels and colors are used by the chart options.
   const labels = aggregatedData.map((item) => item.name);
   const colors = aggregatedData.map((item) => item.color);
 
@@ -68,8 +65,7 @@ export const CategorySpendingChart = ({
           show: false,
         },
         track: {
-          background: '#f1f5f9', // A light gray track for light mode
-          // In a full dark mode implementation, you'd make this dynamic
+          background: '#f1f5f9',
         },
       },
     },
@@ -93,20 +89,15 @@ export const CategorySpendingChart = ({
     stroke: {
       lineCap: 'round',
     },
-
-    // --- Custom Tooltip Configuration ---
     tooltip: {
       enabled: true,
-      // This custom function gives us full control over the tooltip's content and appearance.
       custom: function ({ seriesIndex, w }) {
         const categoryName = w.globals.labels[seriesIndex];
-        // Find the original, non-percentage data point to get the true spending amount.
         const originalDataPoint = aggregatedData.find(
           (d) => d.name === categoryName
         );
         const amount = originalDataPoint ? originalDataPoint.value : 0;
 
-        // Return a custom HTML string for the tooltip.
         return `
           <div class="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg">
             <span class="font-semibold text-slate-800 dark:text-slate-200">${categoryName}:</span>
@@ -117,14 +108,20 @@ export const CategorySpendingChart = ({
         `;
       },
     },
-    // --- End Custom Tooltip ---
   };
 
   if (!aggregatedData || aggregatedData.length === 0) {
     return (
-      <div className='h-[300px] flex items-center justify-center text-muted-foreground text-sm'>
-        No categorized spending to display.
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Spending by Category</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='h-[300px] flex items-center justify-center text-muted-foreground text-sm'>
+            No categorized spending to display.
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -134,7 +131,6 @@ export const CategorySpendingChart = ({
         <CardTitle>Spending by Category</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* We pass the prepared options and series data to our client-side chart wrapper. */}
         <ApexChart
           options={chartOptions}
           series={series}

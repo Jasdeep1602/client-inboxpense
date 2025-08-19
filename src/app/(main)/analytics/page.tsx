@@ -8,9 +8,12 @@ import {
 import { MonthlySummaryChart } from '@/components/MonthlySummaryChart';
 import { CategorySpendingChart } from '@/components/CategorySpendingChart';
 import { authenticatedFetch } from '@/lib/api';
-import { AnalyticsFilters } from '@/components/AnalyticsFilters';
+import {
+  AnalyticsFilters,
+  AnalyticsPeriodFilters,
+} from '@/components/AnalyticsFilters';
 
-// --- Revert to the correct, complex types that match your API ---
+// --- Type Definitions for API Data ---
 type MonthlySummaryData = {
   month: string;
   totalCredit: number;
@@ -22,8 +25,8 @@ type CategorySpendingData = {
   categories: { id: string; name: string; color: string; total: number }[];
   monthlyTotal: number;
 };
-// --- END TYPE REVERT ---
 
+// --- Data Fetching Functions ---
 async function getMonthlySummary(
   source: string
 ): Promise<MonthlySummaryData[]> {
@@ -34,35 +37,45 @@ async function getMonthlySummary(
     if (!res.ok) return [];
     return res.json();
   } catch (error) {
+    console.error('Failed to fetch monthly summary:', error);
     return [];
   }
 }
 
 async function getCategorySpending(
-  source: string
+  source: string,
+  period: string
 ): Promise<CategorySpendingData[]> {
   try {
     const res = await authenticatedFetch(
-      `/api/summary/spending-by-category?source=${source}`
+      `/api/summary/spending-by-category?source=${source}&period=${period}`
     );
     if (!res.ok) return [];
     return res.json();
   } catch (error) {
+    console.error('Failed to fetch category spending:', error);
     return [];
   }
 }
 
+/**
+ * The main server component for the Analytics page.
+ * It is now completely free of security logic.
+ */
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const params = await searchParams;
-  const currentSource = (params.source as string) || 'All';
+  // --- NO MORE COOKIE CHECKS OR REDIRECTS ---
+  // If this code runs, the user is authenticated, guaranteed by middleware.ts.
+
+  const currentSource = (searchParams.source as string) || 'All';
+  const currentPeriod = (searchParams.period as string) || '6m';
 
   const [monthlySummary, categorySpending] = await Promise.all([
     getMonthlySummary(currentSource),
-    getCategorySpending(currentSource),
+    getCategorySpending(currentSource, currentPeriod),
   ]);
 
   return (
@@ -71,7 +84,8 @@ export default async function AnalyticsPage({
         <CardHeader>
           <CardTitle>Financial Analytics</CardTitle>
           <CardDescription>
-            An overview of your income and spending habits.
+            An overview of your income and spending habits. Filter by profile
+            below.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -79,24 +93,29 @@ export default async function AnalyticsPage({
         </CardContent>
       </Card>
 
-      <div className='grid gap-6 md:grid-cols-2'>
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MonthlySummaryChart data={monthlySummary} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Spending by Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* This now correctly passes the complex data to the smart chart component */}
-            <CategorySpendingChart data={categorySpending} />
-          </CardContent>
-        </Card>
+      <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-5'>
+        <div className='lg:col-span-3'>
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MonthlySummaryChart data={monthlySummary} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className='lg:col-span-2'>
+          <Card>
+            <CardHeader className='flex flex-row items-center justify-between'>
+              <CardTitle>Spending by Category</CardTitle>
+              <AnalyticsPeriodFilters />
+            </CardHeader>
+            <CardContent>
+              <CategorySpendingChart data={categorySpending} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
