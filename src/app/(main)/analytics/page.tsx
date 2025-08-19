@@ -65,13 +65,14 @@ async function getCategorySpending(
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const params = await searchParams;
   // --- NO MORE COOKIE CHECKS OR REDIRECTS ---
   // If this code runs, the user is authenticated, guaranteed by middleware.ts.
 
-  const currentSource = (searchParams.source as string) || 'All';
-  const currentPeriod = (searchParams.period as string) || '6m';
+  const currentSource = (params.source as string) || 'All';
+  const currentPeriod = (params.period as string) || '6m';
 
   const [monthlySummary, categorySpending] = await Promise.all([
     getMonthlySummary(currentSource),
