@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+
 import {
   TransactionsManager,
   type Transaction,
@@ -5,6 +7,7 @@ import {
 } from '../../../components/TransactionsManager';
 import { PaginationController } from '@/components/PaginationController';
 import { authenticatedFetch } from '@/lib/api';
+import { TableSkeleton } from '@/components/TableSkeleton';
 
 // This is the correct, full type for the entire API response.
 type ApiResponse = {
@@ -50,21 +53,15 @@ async function getTransactions(
   }
 }
 
-/**
- * The main server component for the dashboard page.
- * It is now free of security logic, as the middleware handles it.
- */
-export default async function DashboardPage({
-  searchParams,
+async function TransactionsData({
+  currentPage,
+  currentSource,
+  currentGroupBy,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  currentPage: number;
+  currentSource: string;
+  currentGroupBy: string;
 }) {
-  const params = await searchParams;
-
-  const currentPage = Number(params.page) || 1;
-  const currentSource = (params.source as string) || 'All';
-  const currentGroupBy = (params.groupBy as string) || 'none';
-
   const { type, data, pagination } = await getTransactions(
     currentPage,
     currentSource,
@@ -78,3 +75,50 @@ export default async function DashboardPage({
     </div>
   );
 }
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+
+  const currentPage = Number(params.page) || 1;
+  const currentSource = (params.source as string) || 'All';
+  const currentGroupBy = (params.groupBy as string) || 'none';
+  return (
+    // We wrap the entire data-dependent section in Suspense
+    <Suspense fallback={<TableSkeleton />}>
+      <TransactionsData
+        currentPage={currentPage}
+        currentSource={currentSource}
+        currentGroupBy={currentGroupBy}
+      />
+    </Suspense>
+  );
+}
+
+// export default async function DashboardPage({
+//   searchParams,
+// }: {
+//   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+// }) {
+//   const params = await searchParams;
+
+//   const currentPage = Number(params.page) || 1;
+//   const currentSource = (params.source as string) || 'All';
+//   const currentGroupBy = (params.groupBy as string) || 'none';
+
+//   const { type, data, pagination } = await getTransactions(
+//     currentPage,
+//     currentSource,
+//     currentGroupBy
+//   );
+
+//   return (
+//     <div className='space-y-6'>
+//       <TransactionsManager dataType={type} transactionData={data} />
+//       <PaginationController totalPages={pagination.totalPages} />
+//     </div>
+//   );
+// }
