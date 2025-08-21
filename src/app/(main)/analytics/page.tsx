@@ -14,6 +14,7 @@ import {
   AnalyticsPeriodFilters,
 } from '@/components/AnalyticsFilters';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
+import { Header } from '@/components/Header';
 
 // --- Type Definitions for API Data ---
 type MonthlySummaryData = {
@@ -109,88 +110,27 @@ export default async function AnalyticsPage({
   const currentPeriod = (params.period as string) || '6m';
 
   return (
-    <div className='space-y-6'>
-      <Card>
-        <CardHeader>
-          <CardTitle>Financial Analytics</CardTitle>
-          <CardDescription>...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AnalyticsFilters />
-        </CardContent>
-      </Card>
+    <>
+      <Header title='Analytics' />
+      <div className='p-6 pt-5 space-y-6'>
+        <Card>
+          <CardHeader>
+            <CardTitle>Financial Analytics</CardTitle>
+            <CardDescription>...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AnalyticsFilters />
+          </CardContent>
+        </Card>
 
-      {/* --- WRAP DATA-DEPENDENT UI IN SUSPENSE --- */}
-      <Suspense fallback={<DashboardSkeleton />}>
-        <AnalyticsData
-          currentSource={currentSource}
-          currentPeriod={currentPeriod}
-        />
-      </Suspense>
-    </div>
+        {/* --- WRAP DATA-DEPENDENT UI IN SUSPENSE --- */}
+        <Suspense fallback={<DashboardSkeleton />}>
+          <AnalyticsData
+            currentSource={currentSource}
+            currentPeriod={currentPeriod}
+          />
+        </Suspense>
+      </div>
+    </>
   );
 }
-
-/**
- * The main server component for the Analytics page.
- * It is now completely free of security logic.
- */
-// export default async function AnalyticsPage({
-//   searchParams,
-// }: {
-//   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-// }) {
-//   const params = await searchParams;
-//   // --- NO MORE COOKIE CHECKS OR REDIRECTS ---
-//   // If this code runs, the user is authenticated, guaranteed by middleware.ts.
-
-//   const currentSource = (params.source as string) || 'All';
-//   const currentPeriod = (params.period as string) || '6m';
-
-//   const [monthlySummary, categorySpending] = await Promise.all([
-//     getMonthlySummary(currentSource),
-//     getCategorySpending(currentSource, currentPeriod),
-//   ]);
-
-//   return (
-//     <div className='space-y-6'>
-//       <Card>
-//         <CardHeader>
-//           <CardTitle>Financial Analytics</CardTitle>
-//           <CardDescription>
-//             An overview of your income and spending habits. Filter by profile
-//             below.
-//           </CardDescription>
-//         </CardHeader>
-//         <CardContent>
-//           <AnalyticsFilters />
-//         </CardContent>
-//       </Card>
-
-//       <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-5'>
-//         <div className='lg:col-span-3'>
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>Monthly Summary</CardTitle>
-//             </CardHeader>
-//             <CardContent>
-//               <MonthlySummaryChart data={monthlySummary} />
-//             </CardContent>
-//           </Card>
-//         </div>
-
-//         <div className='lg:col-span-2'>
-//           <Card>
-//             <CardHeader className='flex flex-row items-center justify-between'>
-//               <CardTitle>Spending by Category</CardTitle>
-//               <AnalyticsPeriodFilters />
-//             </CardHeader>
-//             <CardContent>
-//               <CategorySpendingChart data={categorySpending} />
-//             </CardContent>
-//           </Card>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }

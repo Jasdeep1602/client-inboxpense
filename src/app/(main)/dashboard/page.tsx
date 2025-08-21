@@ -8,6 +8,7 @@ import {
 import { PaginationController } from '@/components/PaginationController';
 import { authenticatedFetch } from '@/lib/api';
 import { TableSkeleton } from '@/components/TableSkeleton';
+import { Header } from '@/components/Header';
 
 // This is the correct, full type for the entire API response.
 type ApiResponse = {
@@ -88,37 +89,20 @@ export default async function DashboardPage({
   const currentGroupBy = (params.groupBy as string) || 'none';
   return (
     // We wrap the entire data-dependent section in Suspense
-    <Suspense fallback={<TableSkeleton />}>
-      <TransactionsData
-        currentPage={currentPage}
-        currentSource={currentSource}
-        currentGroupBy={currentGroupBy}
-      />
-    </Suspense>
+    <>
+      {/* The Header is rendered immediately. It is NOT inside Suspense. */}
+      <Header title='Dashboard' />
+
+      {/* The main content area that will be wrapped by the layout's <main> tag */}
+      <div className='p-6 pt-5'>
+        <Suspense fallback={<TableSkeleton />}>
+          <TransactionsData
+            currentPage={currentPage}
+            currentSource={currentSource}
+            currentGroupBy={currentGroupBy}
+          />
+        </Suspense>
+      </div>
+    </>
   );
 }
-
-// export default async function DashboardPage({
-//   searchParams,
-// }: {
-//   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-// }) {
-//   const params = await searchParams;
-
-//   const currentPage = Number(params.page) || 1;
-//   const currentSource = (params.source as string) || 'All';
-//   const currentGroupBy = (params.groupBy as string) || 'none';
-
-//   const { type, data, pagination } = await getTransactions(
-//     currentPage,
-//     currentSource,
-//     currentGroupBy
-//   );
-
-//   return (
-//     <div className='space-y-6'>
-//       <TransactionsManager dataType={type} transactionData={data} />
-//       <PaginationController totalPages={pagination.totalPages} />
-//     </div>
-//   );
-// }

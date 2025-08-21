@@ -1,7 +1,5 @@
 import React from 'react';
-import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/Sidebar'; // Import the new client component
-
 // This layout is now a SERVER COMPONENT (no 'use client' at the top)
 export default function MainAppLayout({
   children,
@@ -15,7 +13,6 @@ export default function MainAppLayout({
 
       <div className='relative md:ml-64'>
         {/* The Header is a Server Component. */}
-        <Header />
 
         <main className='p-6 pt-24'>{children}</main>
       </div>

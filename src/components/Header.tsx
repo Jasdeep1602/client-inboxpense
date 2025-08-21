@@ -30,16 +30,21 @@ async function getAuthenticatedUser() {
 /**
  * The main Header component. This is a Server Component.
  */
-export const Header = async () => {
+export const Header = async ({ title }: { title: string }) => {
   const user = await getAuthenticatedUser();
 
   return (
     <header className='fixed top-0 left-0 md:left-64 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 border-b border-slate-200 dark:border-slate-800'>
       <div className='flex items-center justify-between h-16 px-6'>
         {/* We'll make this title dynamic later */}
-        <h1 className='text-xl font-semibold text-slate-800 dark:text-slate-200'>
-          Dashboard
-        </h1>
+        <div className='flex items-center gap-4'>
+          {' '}
+          <h1 className='text-xl font-semibold text-slate-800 dark:text-slate-200'>
+            {title}
+          </h1>
+          {/* Theme toggle button */}
+          <ThemeToggle />
+        </div>
 
         {/* User info and actions */}
         <div className='flex items-center gap-4'>
@@ -65,8 +70,6 @@ export const Header = async () => {
               <SignOutButton />
             </>
           ) : null}
-
-          <ThemeToggle />
         </div>
       </div>
     </header>

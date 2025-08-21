@@ -42,6 +42,9 @@ import {
   Baby,
   Heart,
   BedDouble,
+  LayoutGrid,
+  BarChart2,
+  Settings,
   LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Import the 'cn' utility from shadcn
@@ -90,6 +93,9 @@ const iconMap = {
   Baby,
   Heart,
   BedDouble,
+  LayoutGrid,
+  BarChart2,
+  Settings,
 };
 
 export type IconName = keyof typeof iconMap;
