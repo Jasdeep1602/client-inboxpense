@@ -19,10 +19,11 @@ const formatMonth = (monthStr: string) => {
 
 export const MonthlySummaryChart = ({
   data,
+  onMonthSelect,
 }: {
   data: MonthlySummaryData[];
+  onMonthSelect: (data: MonthlySummaryData) => void;
 }) => {
-  // --- Prepare the data and options for ApexCharts ---
   const categories = data.map((item) => formatMonth(item.month));
   const creditData = data.map((item) => item.totalCredit);
   const debitData = data.map((item) => item.totalDebit);
@@ -30,11 +31,17 @@ export const MonthlySummaryChart = ({
   const chartOptions: ApexOptions = {
     chart: {
       type: 'bar',
-      height: 300,
+      height: 350,
       stacked: false,
       toolbar: { show: false },
+      events: {
+        dataPointSelection: (event, chartContext, config) => {
+          const selectedIndex = config.dataPointIndex;
+          onMonthSelect(data[selectedIndex]);
+        },
+      },
     },
-    plotOptions: { bar: { horizontal: false, columnWidth: '55%' } },
+    plotOptions: { bar: { horizontal: false, columnWidth: '60%' } },
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: { categories: categories, labels: { style: { colors: '#64748b' } } },
@@ -47,11 +54,11 @@ export const MonthlySummaryChart = ({
     },
     fill: { opacity: 1 },
     tooltip: { y: { formatter: (val) => `₹${val.toFixed(2)}` } },
-    colors: ['#22c55e', '#ef4444'], // Green for credit, Red for debit
+    colors: ['#22c55e', '#ef4444'],
     legend: {
       position: 'bottom',
       horizontalAlign: 'center',
-      offsetY: 10,
+      offsetY: 5,
       labels: { colors: '#64748b' },
     },
     grid: {
@@ -69,9 +76,16 @@ export const MonthlySummaryChart = ({
 
   if (!data || data.length === 0) {
     return (
-      <div className='h-[300px] flex items-center justify-center text-muted-foreground text-sm'>
-        No monthly data to display.
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='h-[350px] flex items-center justify-center text-muted-foreground text-sm'>
+            No monthly data to display.
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -85,7 +99,7 @@ export const MonthlySummaryChart = ({
           options={chartOptions}
           series={series}
           type='bar'
-          height={300}
+          height={350}
         />
       </CardContent>
     </Card>

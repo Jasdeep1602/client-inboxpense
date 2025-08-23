@@ -1,22 +1,28 @@
-'use client'; // <-- THIS IS THE MOST IMPORTANT CHANGE
+'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import ApexChart from './ApexChart';
 import { ApexOptions } from 'apexcharts';
 
-// This is the data structure provided by the analytics page
+type AggregatedCategoryData = {
+  name: string;
+  value: number;
+  color: string;
+};
+
 type CategorySpendingData = {
   month: string;
-  categories: { id: string; name: string; color: string; total: number }[];
+  categories: { name: string; color: string; total: number }[];
   monthlyTotal: number;
 };
 
 export const CategorySpendingChart = ({
   data,
+  onCategorySelect,
 }: {
   data: CategorySpendingData[];
+  onCategorySelect: (data: AggregatedCategoryData) => void;
 }) => {
-  // --- Aggregate the nested data into a simple format for the chart ---
   const aggregatedData = data
     .flatMap((month) => month.categories)
     .reduce((acc, category) => {
@@ -31,10 +37,9 @@ export const CategorySpendingChart = ({
         });
       }
       return acc;
-    }, [] as { name: string; value: number; color: string }[])
+    }, [] as AggregatedCategoryData[])
     .sort((a, b) => b.value - a.value);
 
-  // --- Prepare Data & Options for the ApexCharts Radial Bar Chart ---
   const totalSpending = aggregatedData.reduce(
     (sum, item) => sum + item.value,
     0
@@ -45,15 +50,20 @@ export const CategorySpendingChart = ({
           parseFloat(((item.value / totalSpending) * 100).toFixed(2))
         )
       : [];
-
   const labels = aggregatedData.map((item) => item.name);
   const colors = aggregatedData.map((item) => item.color);
 
   const chartOptions: ApexOptions = {
     chart: {
       type: 'radialBar',
-      height: 300,
+      height: 350,
       toolbar: { show: false },
+      events: {
+        dataPointSelection: (event, chartContext, config) => {
+          const selectedIndex = config.dataPointIndex;
+          onCategorySelect(aggregatedData[selectedIndex]);
+        },
+      },
     },
     plotOptions: {
       radialBar: {
@@ -62,7 +72,16 @@ export const CategorySpendingChart = ({
           size: '30%',
         },
         dataLabels: {
-          show: false,
+          show: true,
+          name: {
+            show: false,
+          },
+          value: {
+            show: true,
+            fontSize: '14px',
+            fontWeight: 'bold',
+            formatter: (val) => `${val}%`,
+          },
         },
         track: {
           background: '#f1f5f9',
@@ -71,6 +90,8 @@ export const CategorySpendingChart = ({
     },
     colors: colors,
     labels: labels,
+    // --- THIS IS THE FIX ---
+    // Restore the legend configuration
     legend: {
       show: true,
       position: 'bottom',
@@ -86,26 +107,18 @@ export const CategorySpendingChart = ({
         highlightDataSeries: true,
       },
     },
+    // --- END FIX ---
     stroke: {
       lineCap: 'round',
     },
     tooltip: {
       enabled: true,
-      custom: function ({ seriesIndex, w }) {
-        const categoryName = w.globals.labels[seriesIndex];
-        const originalDataPoint = aggregatedData.find(
-          (d) => d.name === categoryName
-        );
-        const amount = originalDataPoint ? originalDataPoint.value : 0;
-
-        return `
-          <div class="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg">
-            <span class="font-semibold text-slate-800 dark:text-slate-200">${categoryName}:</span>
-            <span class="text-slate-600 dark:text-slate-400 ml-2">₹${amount.toFixed(
-              2
-            )}</span>
-          </div>
-        `;
+      y: {
+        formatter: (val, { seriesIndex }) => {
+          const originalDataPoint = aggregatedData[seriesIndex];
+          const amount = originalDataPoint ? originalDataPoint.value : 0;
+          return `₹${amount.toFixed(2)}`;
+        },
       },
     },
   };
@@ -117,7 +130,7 @@ export const CategorySpendingChart = ({
           <CardTitle>Spending by Category</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='h-[300px] flex items-center justify-center text-muted-foreground text-sm'>
+          <div className='h-[350px] flex items-center justify-center text-muted-foreground text-sm'>
             No categorized spending to display.
           </div>
         </CardContent>
@@ -135,7 +148,7 @@ export const CategorySpendingChart = ({
           options={chartOptions}
           series={series}
           type='radialBar'
-          height={300}
+          height={350}
         />
       </CardContent>
     </Card>

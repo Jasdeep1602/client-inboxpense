@@ -16,7 +16,7 @@ const navItems = [
 ];
 
 // A reusable component for the navigation links
-const SidebarNav = () => {
+const SidebarNav = ({ onLinkClick }: { onLinkClick?: () => void }) => {
   const pathname = usePathname();
   return (
     <nav className='flex flex-col gap-2'>
@@ -26,6 +26,7 @@ const SidebarNav = () => {
           <Link
             key={item.name}
             href={item.href}
+            onClick={onLinkClick} // This will trigger the close action on mobile
             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-colors ${
               isActive
                 ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-lg'
@@ -47,7 +48,7 @@ const MobileSidebar = () => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side='left' className='p-4 pt-10 bg-sidebar'>
-        <SidebarNav />
+        <SidebarNav onLinkClick={onClose} />
       </SheetContent>
     </Sheet>
   );
@@ -58,7 +59,7 @@ const DesktopSidebar = () => {
   return (
     <aside className='fixed top-0 left-0 w-64 h-full bg-sidebar/90 backdrop-blur-lg text-sidebar-foreground p-4 hidden md:flex flex-col border-r border-sidebar-border/20'>
       <div className='text-2xl font-bold mb-10 pl-2 tracking-wider'>
-        inboXpense
+        Inboxpense
       </div>
       <SidebarNav />
     </aside>
