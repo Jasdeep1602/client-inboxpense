@@ -1,12 +1,11 @@
 'use client';
 
 import Image from 'next/image';
+import { usePathname } from 'next/navigation'; // Import the hook
 import { SignOutButton } from './SignOutButton';
 import { ThemeToggle } from './ThemeToggle';
-import { MobileMenuTrigger } from './Sidebar'; // Import the new trigger
+import { MobileMenuTrigger } from './Sidebar';
 
-// Since the user data is fetched in the layout and passed down,
-// we define the user type for our props.
 type User = {
   name: string;
   email: string;
@@ -14,17 +13,28 @@ type User = {
 } | null;
 
 interface HeaderProps {
-  title: string;
   user: User;
 }
 
-export const Header = ({ title, user }: HeaderProps) => {
+export const Header = ({ user }: HeaderProps) => {
+  const pathname = usePathname(); // Get the current path
+
+  // --- DYNAMIC TITLE LOGIC ---
+  let pageTitle = 'Dashboard'; // Default title
+  if (pathname.startsWith('/analytics')) {
+    pageTitle = 'Analytics';
+  } else if (pathname.startsWith('/settings')) {
+    pageTitle = 'Settings';
+  }
+  // --- END DYNAMIC TITLE LOGIC ---
+
   return (
     <header className='fixed top-0 left-0 md:left-64 right-0 bg-background/80 backdrop-blur-sm z-10 border-b'>
       <div className='flex items-center justify-between h-16 px-4 sm:px-6'>
         <div className='flex items-center gap-2'>
           <MobileMenuTrigger />
-          <h1 className='text-xl font-semibold'>{title}</h1>
+          <h1 className='text-xl font-semibold'>{pageTitle}</h1>{' '}
+          {/* Render dynamic title */}
         </div>
 
         <div className='flex items-center gap-4'>

@@ -23,10 +23,11 @@ async function getAuthenticatedUser() {
   }
 }
 
-// A new async component to fetch data and render the Header
-async function HeaderController({ title }: { title: string }) {
+// A Server Component wrapper to fetch data and pass it to the client Header
+async function HeaderController() {
   const user = await getAuthenticatedUser();
-  return <Header title={title} user={user} />;
+  // The Header component will now determine its own title
+  return <Header user={user} />;
 }
 
 export default function MainAppLayout({
@@ -34,20 +35,12 @@ export default function MainAppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // We'll extract the title from the children later for dynamic titles
-  // For now, it's a placeholder.
-  const pageTitle = 'Dashboard';
-
   return (
     <div className='min-h-screen bg-muted/40'>
       <Sidebar />
       <div className='relative md:ml-64'>
-        {/*
-          The Header is now a Client Component, but we wrap its data fetching
-          in a Server Component to keep the logic on the server.
-        */}
-        <Suspense>
-          <HeaderController title={pageTitle} />
+        <Suspense fallback={<div className='h-16' />}>
+          <HeaderController />
         </Suspense>
 
         {/* The main content area now has a top margin to account for the fixed header */}
