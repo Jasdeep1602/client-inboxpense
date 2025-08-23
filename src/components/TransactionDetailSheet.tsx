@@ -13,11 +13,12 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Transaction } from './TransactionsManager'; // Import main Transaction type
+import { Transaction } from './TransactionsManager';
 import { toast } from 'sonner';
-import { CategorySelector } from './CategorySelector'; // Import the category selector
+import { CategorySelector } from './CategorySelector';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { cn } from '@/lib/utils';
 
-// A simpler date format for the details view
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('en-US', {
     weekday: 'long',
@@ -35,12 +36,28 @@ interface TransactionDetailSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// A reusable component for displaying detail items
+const DetailItem = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className='flex justify-between items-center py-3 border-b border-border/50'>
+    <p className='text-sm text-muted-foreground'>{label}</p>
+    <div className='text-right font-medium text-sm'>{value}</div>
+  </div>
+);
+
 export const TransactionDetailSheet = ({
   transaction,
   isOpen,
   onOpenChange,
 }: TransactionDetailSheetProps) => {
   const router = useRouter();
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const sheetSide = isDesktop ? 'right' : 'bottom';
 
   const form = useForm({
     defaultValues: {
@@ -53,7 +70,6 @@ export const TransactionDetailSheet = ({
     formState: { isSubmitting, isDirty },
   } = form;
 
-  // This function now ONLY saves the description
   const onSaveNotes = async (values: { description: string }) => {
     try {
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/${transaction._id}`;
@@ -63,9 +79,7 @@ export const TransactionDetailSheet = ({
         body: JSON.stringify({ description: values.description }),
         credentials: 'include',
       });
-
       if (!response.ok) throw new Error('Failed to save notes');
-
       toast.success('Your notes have been updated.');
       onOpenChange(false);
       router.refresh();
@@ -76,58 +90,44 @@ export const TransactionDetailSheet = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className='w-[400px] sm:w-[540px] flex flex-col'>
-        <SheetHeader className='text-left'>
+      <SheetContent
+        side={sheetSide}
+        className={cn(
+          'flex flex-col p-0',
+          isDesktop ? 'w-full sm:max-w-md' : 'h-[95vh] rounded-t-2xl'
+        )}>
+        <SheetHeader className='p-6 pb-4 text-left'>
           <SheetTitle>Transaction Details</SheetTitle>
           <SheetDescription>
             Review and manage the details of this transaction.
           </SheetDescription>
         </SheetHeader>
 
-        {/* Main Content Area */}
-        <div className='flex-grow overflow-y-auto pr-6 space-y-6'>
-          {/* Amount and Type */}
-          <div className='text-center mt-4'>
+        <div className='flex-grow overflow-y-auto px-6 space-y-6'>
+          <div className='text-center py-4'>
             <p
-              className={`text-4xl font-bold ${
+              className={`text-5xl font-bold ${
                 transaction.type === 'debit'
                   ? 'text-destructive'
                   : 'text-green-600'
               }`}>
               ₹{transaction.amount.toFixed(2)}
             </p>
-            <p className='text-muted-foreground capitalize'>
+            <p className='text-muted-foreground capitalize text-sm'>
               {transaction.type}
             </p>
           </div>
 
-          {/* Details Grid */}
-          <div className='grid grid-cols-3 gap-y-4 items-center rounded-lg border p-4'>
-            <div className='col-span-1 text-sm text-muted-foreground'>Date</div>
-            <div className='col-span-2 font-medium'>
-              {formatDate(transaction.date)}
-            </div>
-
-            <div className='col-span-1 text-sm text-muted-foreground'>
-              Account
-            </div>
-            <div className='col-span-2 font-medium'>{transaction.mode}</div>
-
-            <div className='col-span-1 text-sm text-muted-foreground'>
-              Profile
-            </div>
-            <div className='col-span-2 font-medium'>{transaction.source}</div>
-
-            <div className='col-span-1 text-sm text-muted-foreground'>
-              Category
-            </div>
-            <div className='col-span-2'>
-              {/* The CategorySelector is now inside the sheet */}
-              <CategorySelector transaction={transaction} />
-            </div>
+          <div className='space-y-2'>
+            <DetailItem label='Date' value={formatDate(transaction.date)} />
+            <DetailItem label='Account' value={transaction.mode} />
+            <DetailItem label='Profile' value={transaction.source} />
+            <DetailItem
+              label='Category'
+              value={<CategorySelector transaction={transaction} />}
+            />
           </div>
 
-          {/* Raw SMS Body */}
           <div>
             <h4 className='text-sm font-semibold mb-2'>Original Message</h4>
             <p className='text-xs text-muted-foreground bg-muted p-3 rounded-md break-words'>
@@ -136,8 +136,7 @@ export const TransactionDetailSheet = ({
           </div>
         </div>
 
-        {/* Footer with Edit Form for "Your Notes" */}
-        <SheetFooter className='mt-auto bg-background pt-4 border-t'>
+        <SheetFooter className='mt-auto bg-background/95 backdrop-blur-sm p-6 border-t'>
           <form
             onSubmit={handleSubmit(onSaveNotes)}
             className='w-full space-y-4'>

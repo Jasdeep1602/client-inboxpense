@@ -16,19 +16,16 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils'; // shadcn utility
+import { cn } from '@/lib/utils';
 
-// Type for a single category
 type Category = {
   _id: string;
   name: string;
   color: string;
 };
 
-// Type for a single transaction (just what we need)
 type Transaction = {
   _id: string;
   categoryId?: {
@@ -50,7 +47,6 @@ export function CategorySelector({
   );
   const router = useRouter();
 
-  // Fetch all available categories once when the component is first used
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -68,7 +64,7 @@ export function CategorySelector({
   }, []);
 
   const handleSelectCategory = async (categoryId: string) => {
-    const newCategoryId = categoryId === selectedCategoryId ? null : categoryId; // Allow unselecting
+    const newCategoryId = categoryId === selectedCategoryId ? null : categoryId;
 
     try {
       const response = await fetch(
@@ -86,7 +82,7 @@ export function CategorySelector({
       toast.success('Transaction category updated.');
       setSelectedCategoryId(newCategoryId || '');
       setOpen(false);
-      router.refresh(); // Refresh server components
+      router.refresh();
     } catch (error) {
       toast.error('Could not update category.');
     }
@@ -99,47 +95,49 @@ export function CategorySelector({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        {selectedCategory ? (
-          <Badge
-            variant='outline'
-            style={{
-              borderColor: selectedCategory.color,
-              color: selectedCategory.color,
-            }}
-            className='cursor-pointer'>
-            {selectedCategory.name}
-          </Badge>
-        ) : (
-          <Button
-            variant='ghost'
-            size='sm'
-            className='text-xs text-muted-foreground'>
-            Uncategorized
-          </Button>
-        )}
+        <Button
+          variant='outline'
+          role='combobox'
+          aria-expanded={open}
+          className='w-auto justify-between font-normal text-xs h-8'>
+          {selectedCategory ? (
+            <>
+              <span
+                className='w-2 h-2 rounded-full mr-2'
+                style={{ backgroundColor: selectedCategory.color }}
+              />
+              {selectedCategory.name}
+            </>
+          ) : (
+            'Uncategorized'
+          )}
+          <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+        </Button>
       </PopoverTrigger>
-      <PopoverContent className='p-0' align='start'>
+      <PopoverContent className='w-[200px] p-0'>
         <Command>
           <CommandInput placeholder='Search category...' />
           <CommandList>
             <CommandEmpty>No categories found.</CommandEmpty>
             <CommandGroup>
-              {categories.map((category) => (
-                <CommandItem
-                  key={category._id}
-                  value={category.name}
-                  onSelect={() => handleSelectCategory(category._id)}>
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      selectedCategoryId === category._id
-                        ? 'opacity-100'
-                        : 'opacity-0'
-                    )}
-                  />
-                  {category.name}
-                </CommandItem>
-              ))}
+              <div className='max-h-[200px] overflow-y-auto'>
+                {categories.map((category) => (
+                  <CommandItem
+                    key={category._id}
+                    value={category.name}
+                    onSelect={() => handleSelectCategory(category._id)}>
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        selectedCategoryId === category._id
+                          ? 'opacity-100'
+                          : 'opacity-0'
+                      )}
+                    />
+                    {category.name}
+                  </CommandItem>
+                ))}
+              </div>
             </CommandGroup>
           </CommandList>
         </Command>

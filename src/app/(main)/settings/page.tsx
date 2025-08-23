@@ -7,7 +7,6 @@ import { Header } from '@/components/Header';
 export default function SettingsPage() {
   return (
     <>
-      <Header title='Settings' />
       <div className='p-6 pt-5 space-y-6'>
         <SyncManager />
         <SourceMappingManager />

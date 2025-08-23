@@ -224,7 +224,7 @@ export function AddTransactionDialog() {
                   <SelectTrigger>
                     <SelectValue placeholder='Select a category' />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className='max-h-45 overflow-y-auto'>
                     {categories.map((cat) => (
                       <SelectItem key={cat._id} value={cat._id}>
                         {cat.name}

@@ -1,14 +1,7 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { Button } from './ui/button';
+'use client';
 
-// This is a Server Action that will be called by the form.
-async function signOutAction() {
-  'use server';
-  const cookieStore = await cookies();
-  cookieStore.delete('jwt');
-  redirect('/');
-}
+import { Button } from './ui/button';
+import { signOutAction } from '@/lib/actions'; // Import the action from its new file
 
 export const SignOutButton = () => {
   return (

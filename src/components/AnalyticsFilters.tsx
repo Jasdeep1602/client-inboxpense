@@ -10,7 +10,7 @@ export const AnalyticsFilters = () => {
   const handleFilterChange = (source: string) => {
     const params = new URLSearchParams(searchParams);
     params.set('source', source);
-    router.push(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
   return (
     <div className='flex space-x-2'>
@@ -34,7 +34,7 @@ export const AnalyticsPeriodFilters = () => {
   const handleFilterChange = (period: string) => {
     const params = new URLSearchParams(searchParams);
     params.set('period', period);
-    router.push(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
   const periods = [
     { label: '30 Days', value: '30d' },

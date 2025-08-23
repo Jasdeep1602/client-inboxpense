@@ -91,7 +91,6 @@ export default async function DashboardPage({
     // We wrap the entire data-dependent section in Suspense
     <>
       {/* The Header is rendered immediately. It is NOT inside Suspense. */}
-      <Header title='Dashboard' />
 
       {/* The main content area that will be wrapped by the layout's <main> tag */}
       <div className='p-6 pt-5'>
