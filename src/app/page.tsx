@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 // A simple, inline SVG component for the Google 'G' logo
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox='0 0 24 24' {...props}>
@@ -40,6 +42,21 @@ export default function HomePage() {
           <GoogleIcon className='h-5 w-5' />
           Sign in with Google
         </a>
+
+        {/* --- ADDED THIS SECTION --- */}
+        <div className='mt-8 flex justify-center gap-6 text-sm text-slate-400'>
+          <Link
+            href='/terms'
+            className='hover:text-white hover:underline transition-colors'>
+            Terms of Service
+          </Link>
+          <Link
+            href='/privacy'
+            className='hover:text-white hover:underline transition-colors'>
+            Privacy Policy
+          </Link>
+        </div>
+        {/* --- END SECTION --- */}
       </div>
     </main>
   );
