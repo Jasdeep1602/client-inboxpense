@@ -59,7 +59,7 @@ const DesktopSidebar = () => {
   return (
     <aside className='fixed top-0 left-0 w-64 h-full bg-sidebar/90 backdrop-blur-lg text-sidebar-foreground p-4 hidden md:flex flex-col border-r border-sidebar-border/20'>
       <div className='text-2xl font-bold mb-10 pl-2 tracking-wider'>
-        Inboxpense
+        inboXpense
       </div>
       <SidebarNav />
     </aside>

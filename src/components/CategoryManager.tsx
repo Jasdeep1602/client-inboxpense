@@ -183,7 +183,7 @@ export const CategoryManager = () => {
   };
 
   return (
-    <Card>
+    <Card className='mb-6 bg-background/80 dark:bg-background/50 backdrop-blur-sm'>
       <CardHeader>
         <CardTitle>Category Management</CardTitle>
         <CardDescription>

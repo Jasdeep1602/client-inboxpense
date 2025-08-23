@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import ApexChart from './ApexChart';
 import { ApexOptions } from 'apexcharts';
+import { useTheme } from 'next-themes';
 
 type MonthlySummaryData = {
   month: string;
@@ -24,6 +25,7 @@ export const MonthlySummaryChart = ({
   data: MonthlySummaryData[];
   onMonthSelect: (data: MonthlySummaryData) => void;
 }) => {
+  const { theme } = useTheme();
   const categories = data.map((item) => formatMonth(item.month));
   const creditData = data.map((item) => item.totalCredit);
   const debitData = data.map((item) => item.totalDebit);
@@ -53,7 +55,10 @@ export const MonthlySummaryChart = ({
       },
     },
     fill: { opacity: 1 },
-    tooltip: { y: { formatter: (val) => `₹${val.toFixed(2)}` } },
+    tooltip: {
+      theme: theme === 'dark' ? 'dark' : 'light', // Set tooltip theme dynamically
+      y: { formatter: (val) => `₹${val.toFixed(2)}` },
+    },
     colors: ['#22c55e', '#ef4444'],
     legend: {
       position: 'bottom',

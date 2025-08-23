@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import ApexChart from './ApexChart';
 import { ApexOptions } from 'apexcharts';
+import { useTheme } from 'next-themes';
 
 type AggregatedCategoryData = {
   name: string;
@@ -23,6 +24,8 @@ export const CategorySpendingChart = ({
   data: CategorySpendingData[];
   onCategorySelect: (data: AggregatedCategoryData) => void;
 }) => {
+  const { theme } = useTheme();
+
   const aggregatedData = data
     .flatMap((month) => month.categories)
     .reduce((acc, category) => {
@@ -112,6 +115,7 @@ export const CategorySpendingChart = ({
       lineCap: 'round',
     },
     tooltip: {
+      theme: theme === 'dark' ? 'dark' : 'light',
       enabled: true,
       y: {
         formatter: (val, { seriesIndex }) => {

@@ -130,7 +130,7 @@ export const SourceMappingManager = () => {
   };
 
   return (
-    <Card>
+    <Card className='mb-6 bg-background/80 dark:bg-background/50 backdrop-blur-sm'>
       <CardHeader className='flex-row items-center justify-between'>
         <div>
           <CardTitle>Source Mapping</CardTitle>
