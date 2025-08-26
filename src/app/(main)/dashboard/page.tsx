@@ -8,7 +8,6 @@ import {
 import { PaginationController } from '@/components/PaginationController';
 import { authenticatedFetch } from '@/lib/api';
 import { TableSkeleton } from '@/components/TableSkeleton';
-import { Header } from '@/components/Header';
 
 // This is the correct, full type for the entire API response.
 type ApiResponse = {

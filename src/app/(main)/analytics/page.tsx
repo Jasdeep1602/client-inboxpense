@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
@@ -14,7 +14,6 @@ import { MonthlySummaryChart } from '@/components/MonthlySummaryChart';
 import { CategorySpendingChart } from '@/components/CategorySpendingChart';
 import { AnalyticsDetailSheet } from '@/components/AnalyticsDetailSheet';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
-import { Header } from '@/components/Header';
 
 // --- Type Definitions for API Data ---
 type MonthlySummaryData = {
@@ -39,7 +38,7 @@ type DetailData =
   | { type: 'month'; month: string; totalCredit: number; totalDebit: number }
   | { type: 'category'; name: string; value: number; color: string };
 
-// --- Main Data Display Component (Now a Client Component) ---
+// --- Main Data Display Component ---
 function AnalyticsData({
   initialMonthlySummary,
   initialCategorySpending,
@@ -85,8 +84,8 @@ function AnalyticsData({
   );
 }
 
-// --- Page Component (Remains Server Component for initial data fetch) ---
-export default function AnalyticsPage() {
+// --- THIS IS THE NEW CLIENT COMPONENT THAT USES THE HOOKS ---
+function AnalyticsView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -109,16 +108,14 @@ export default function AnalyticsPage() {
         const [monthlyRes, categoryRes] = await Promise.all([
           fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/api/summary/monthly?source=${currentSource}`,
-            { credentials: 'include' } // <-- FIX: ADD CREDENTIALS
+            { credentials: 'include' }
           ),
           fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/api/summary/spending-by-category?source=${currentSource}&period=${currentPeriod}`,
-            { credentials: 'include' } // <-- FIX: ADD CREDENTIALS
+            { credentials: 'include' }
           ),
         ]);
 
-        // --- THIS IS THE FIX ---
-        // Ensure that we only proceed if the API calls were successful
         if (!monthlyRes.ok || !categoryRes.ok) {
           throw new Error('Failed to fetch analytics data from the server.');
         }
@@ -126,14 +123,10 @@ export default function AnalyticsPage() {
         const monthlyData = await monthlyRes.json();
         const categoryData = await categoryRes.json();
 
-        // Ensure that the data is an array before setting the state.
-        // If it's not, default to an empty array to prevent crashes.
         setMonthlySummary(Array.isArray(monthlyData) ? monthlyData : []);
         setCategorySpending(Array.isArray(categoryData) ? categoryData : []);
-        // --- END FIX ---
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
-        // In case of an error, reset the state to empty arrays
         setMonthlySummary([]);
         setCategorySpending([]);
       } finally {
@@ -153,49 +146,57 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <>
-      <div className='p-4 sm:p-6 space-y-6'>
-        <Card>
-          <CardHeader>
-            <CardTitle>Financial Analytics</CardTitle>
-            <CardDescription>
-              Visualize your spending patterns across different profiles and
-              time periods.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='flex flex-col sm:flex-row gap-4 justify-between'>
-            <ToggleGroup
-              type='single'
-              variant={'outline'}
-              defaultValue={currentSource}
-              onValueChange={(v) => v && handleFilterChange('source', v)}>
-              <ToggleGroupItem value='All'>All</ToggleGroupItem>
-              <ToggleGroupItem value='Me'>Me</ToggleGroupItem>
-              <ToggleGroupItem value='Mom'>Mom</ToggleGroupItem>
-              <ToggleGroupItem value='Dad'>Dad</ToggleGroupItem>
-            </ToggleGroup>
-            <ToggleGroup
-              type='single'
-              variant={'outline'}
-              defaultValue={currentPeriod}
-              onValueChange={(v) => v && handleFilterChange('period', v)}>
-              <ToggleGroupItem value='30d'>30 Days</ToggleGroupItem>
-              <ToggleGroupItem value='3m'>3 Months</ToggleGroupItem>
-              <ToggleGroupItem value='6m'>6 Months</ToggleGroupItem>
-              <ToggleGroupItem value='all'>All Time</ToggleGroupItem>
-            </ToggleGroup>
-          </CardContent>
-        </Card>
+    <div className='p-4 sm:p-6 space-y-6'>
+      <Card>
+        <CardHeader>
+          <CardTitle>Financial Analytics</CardTitle>
+          <CardDescription>
+            Visualize your spending patterns across different profiles and time
+            periods.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='flex flex-col sm:flex-row gap-4 justify-between'>
+          <ToggleGroup
+            type='single'
+            variant={'outline'}
+            defaultValue={currentSource}
+            onValueChange={(v) => v && handleFilterChange('source', v)}>
+            <ToggleGroupItem value='All'>All</ToggleGroupItem>
+            <ToggleGroupItem value='Me'>Me</ToggleGroupItem>
+            <ToggleGroupItem value='Mom'>Mom</ToggleGroupItem>
+            <ToggleGroupItem value='Dad'>Dad</ToggleGroupItem>
+          </ToggleGroup>
+          <ToggleGroup
+            type='single'
+            variant={'outline'}
+            defaultValue={currentPeriod}
+            onValueChange={(v) => v && handleFilterChange('period', v)}>
+            <ToggleGroupItem value='30d'>30 Days</ToggleGroupItem>
+            <ToggleGroupItem value='3m'>3 Months</ToggleGroupItem>
+            <ToggleGroupItem value='6m'>6 Months</ToggleGroupItem>
+            <ToggleGroupItem value='all'>All Time</ToggleGroupItem>
+          </ToggleGroup>
+        </CardContent>
+      </Card>
 
-        {isLoading ? (
-          <DashboardSkeleton />
-        ) : (
-          <AnalyticsData
-            initialMonthlySummary={monthlySummary}
-            initialCategorySpending={categorySpending}
-          />
-        )}
-      </div>
-    </>
+      {isLoading ? (
+        <DashboardSkeleton />
+      ) : (
+        <AnalyticsData
+          initialMonthlySummary={monthlySummary}
+          initialCategorySpending={categorySpending}
+        />
+      )}
+    </div>
+  );
+}
+
+// --- THE MAIN PAGE COMPONENT IS NOW A WRAPPER ---
+// It is NOT a client component, so it can be prerendered.
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <AnalyticsView />
+    </Suspense>
   );
 }

@@ -68,6 +68,7 @@ export function EditTransactionSheet({
       setIsOpen(false);
       router.refresh();
     } catch (error) {
+      console.error('Edit transaction error:', error);
       toast.error('Could not save your changes. Please try again.');
     }
   };

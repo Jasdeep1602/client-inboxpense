@@ -2,7 +2,6 @@ import { SyncManager } from '@/components/SyncManager';
 import { SourceMappingManager } from '@/components/SourceMappingManager';
 
 import { CategoryManager } from '@/components/CategoryManager';
-import { Header } from '@/components/Header';
 
 export default function SettingsPage() {
   return (

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +64,7 @@ export const SourceMappingManager = () => {
         const data = await response.json();
         setMappings(data);
       } catch (error) {
+        console.error('Fetch mappings error:', error);
         toast.error('Could not load your source mappings.');
       } finally {
         setIsLoading(false);
@@ -110,6 +110,7 @@ export const SourceMappingManager = () => {
       setIsDialogOpen(false); // Close the dialog
       reset(); // Reset the form fields
     } catch (error) {
+      console.error('Create mapping error:', error);
       toast.error('Could not create mapping.');
     }
   };
@@ -125,6 +126,7 @@ export const SourceMappingManager = () => {
       setMappings((prev) => prev.filter((m) => m._id !== id)); // Optimistically remove from UI
       toast.success('Mapping deleted.');
     } catch (error) {
+      console.error('Delete mapping error:', error);
       toast.error('Could not delete mapping.');
     }
   };

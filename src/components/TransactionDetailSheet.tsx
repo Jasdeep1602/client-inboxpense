@@ -84,6 +84,7 @@ export const TransactionDetailSheet = ({
       onOpenChange(false);
       router.refresh();
     } catch (error) {
+      console.error('Save notes error:', error);
       toast.error('Could not save your notes.');
     }
   };
