@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import apiClient from '@/lib/apiClient';
 
 type Category = {
   _id: string;
@@ -50,12 +51,10 @@ export function CategorySelector({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/categories`,
-          { credentials: 'include' }
-        );
-        const data = await response.json();
-        setCategories(data);
+        // --- THIS IS THE FIX ---
+        const response = await apiClient.get('/api/categories');
+        setCategories(Array.isArray(response.data) ? response.data : []);
+        // --- END FIX ---
       } catch (error) {
         console.error('Failed to fetch categories', error);
       }
@@ -67,18 +66,11 @@ export function CategorySelector({
     const newCategoryId = categoryId === selectedCategoryId ? null : categoryId;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/${transaction._id}/category`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ categoryId: newCategoryId }),
-          credentials: 'include',
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to update category');
-
+      // --- THIS IS THE FIX ---
+      await apiClient.patch(`/api/transactions/${transaction._id}/category`, {
+        categoryId: newCategoryId,
+      });
+      // --- END FIX ---
       toast.success('Transaction category updated.');
       setSelectedCategoryId(newCategoryId || '');
       setOpen(false);

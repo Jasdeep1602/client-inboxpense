@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from './ui/card';
 import { RefreshCw } from 'lucide-react';
+import apiClient from '@/lib/apiClient';
 
 const SYNC_SOURCES = ['Me', 'Mom', 'Dad'];
 
@@ -66,18 +67,10 @@ export const SyncManager = () => {
     for (const source of SYNC_SOURCES) {
       setMessage(`Syncing data for ${source}...`);
       try {
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/sync/drive`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ source }),
-          credentials: 'include',
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.message || `Sync failed for ${source}`);
-        }
+        // --- THIS IS THE FIX ---
+        // Use the apiClient to send the POST request for syncing
+        await apiClient.post('/api/sync/drive', { source });
+        // --- END FIX ---
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : `Failed to sync ${source}`;

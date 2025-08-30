@@ -35,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Icon } from './Icons';
+import apiClient from '@/lib/apiClient';
 
 // Define the type for a single category object received from the API
 type Category = {
@@ -65,17 +66,9 @@ const DeleteCategoryDialog = ({
 }) => {
   const handleDelete = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${category._id}`,
-        {
-          method: 'DELETE',
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete');
-      }
+      // --- THIS IS THE FIX ---
+      await apiClient.delete(`/api/categories/${category._id}`);
+      // --- END FIX ---
       toast.success(`Category "${category.name}" has been deleted.`);
       onCategoryDeleted(); // Notify the parent component to update its state
     } catch (error) {
@@ -134,14 +127,12 @@ export const CategoryManager = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/categories`,
-          { credentials: 'include' }
-        );
-        if (!response.ok) throw new Error('Failed to fetch categories');
-        const data = await response.json();
-        setCategories(data);
+        // --- THIS IS THE FIX ---
+        const response = await apiClient.get('/api/categories');
+        setCategories(Array.isArray(response.data) ? response.data : []);
+        // --- END FIX ---
       } catch (error) {
+        console.error('Error fetching categories:', error);
         toast.error('Could not load your categories.');
       } finally {
         setIsLoading(false);
@@ -156,23 +147,20 @@ export const CategoryManager = () => {
       .map((s) => s.trim())
       .filter(Boolean);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/categories`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, matchStrings: matchStringsArray }),
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) throw new Error('Failed to create category');
+      // --- THIS IS THE FIX ---
+      const response = await apiClient.post('/api/categories', {
+        ...values,
+        matchStrings: matchStringsArray,
+      });
 
-      const newCategory = await response.json();
+      const newCategory = response.data;
+      // --- END FIX ---
       setCategories((prev) => [...prev, newCategory]);
       toast.success('New category created.');
       setIsDialogOpen(false);
       reset();
     } catch (error) {
+      console.error('Error creating category:', error);
       toast.error('Could not create category.');
     }
   };

@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Pencil } from 'lucide-react';
+import apiClient from '@/lib/apiClient';
 
 type Transaction = {
   _id: string;
@@ -45,23 +46,11 @@ export function EditTransactionSheet({
   const onSubmit = async (values: { description: string }) => {
     try {
       // --- THIS IS THE FIX ---
-      // Construct the full, absolute URL to the backend API endpoint.
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/${transaction._id}`;
-
-      const response = await fetch(apiUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: values.description }),
-        // Remember to include credentials to send the HttpOnly cookie
-        credentials: 'include',
+      // Use the apiClient to send the PATCH request
+      await apiClient.patch(`/api/transactions/${transaction._id}`, {
+        description: values.description,
       });
       // --- END FIX ---
-
-      if (!response.ok) {
-        // Try to get a more specific error message from the backend
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save description');
-      }
 
       toast.success('Your transaction has been updated.');
 

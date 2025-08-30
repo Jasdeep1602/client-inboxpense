@@ -14,6 +14,7 @@ import { MonthlySummaryChart } from '@/components/MonthlySummaryChart';
 import { CategorySpendingChart } from '@/components/CategorySpendingChart';
 import { AnalyticsDetailSheet } from '@/components/AnalyticsDetailSheet';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
+import apiClient from '@/lib/apiClient';
 
 // --- Type Definitions for API Data ---
 type MonthlySummaryData = {
@@ -105,26 +106,23 @@ function AnalyticsView() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        // --- THIS IS THE FIX ---
+        // Use the apiClient which is pre-configured with the base URL and credentials
         const [monthlyRes, categoryRes] = await Promise.all([
-          fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/summary/monthly?source=${currentSource}`,
-            { credentials: 'include' }
-          ),
-          fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/summary/spending-by-category?source=${currentSource}&period=${currentPeriod}`,
-            { credentials: 'include' }
+          apiClient.get(`/api/summary/monthly?source=${currentSource}`),
+          apiClient.get(
+            `/api/summary/spending-by-category?source=${currentSource}&period=${currentPeriod}`
           ),
         ]);
 
-        if (!monthlyRes.ok || !categoryRes.ok) {
-          throw new Error('Failed to fetch analytics data from the server.');
-        }
+        // With Axios, the response data is directly available on `response.data`
+        const monthlyData = monthlyRes.data;
+        const categoryData = categoryRes.data;
 
-        const monthlyData = await monthlyRes.json();
-        const categoryData = await categoryRes.json();
-
+        // Ensure that the data is an array before setting the state.
         setMonthlySummary(Array.isArray(monthlyData) ? monthlyData : []);
         setCategorySpending(Array.isArray(categoryData) ? categoryData : []);
+        // --- END FIX ---
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
         setMonthlySummary([]);

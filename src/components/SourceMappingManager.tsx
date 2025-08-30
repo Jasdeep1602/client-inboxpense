@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Trash2 } from 'lucide-react';
+import apiClient from '@/lib/apiClient';
 
 // Define the type for a single mapping rule object
 type SourceMapping = {
@@ -56,13 +57,8 @@ export const SourceMappingManager = () => {
   useEffect(() => {
     const fetchMappings = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/mappings`,
-          { credentials: 'include' }
-        );
-        if (!response.ok) throw new Error('Failed to fetch mappings');
-        const data = await response.json();
-        setMappings(data);
+        const response = await apiClient.get('/api/mappings');
+        setMappings(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Fetch mappings error:', error);
         toast.error('Could not load your source mappings.');
@@ -90,21 +86,12 @@ export const SourceMappingManager = () => {
     }
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/mappings`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mappingName: values.mappingName,
-            matchStrings: matchStringsArray,
-          }),
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) throw new Error('Failed to create mapping');
+      const response = await apiClient.post('/api/mappings', {
+        mappingName: values.mappingName,
+        matchStrings: matchStringsArray,
+      });
 
-      const newMapping = await response.json();
+      const newMapping = response.data;
       setMappings((prev) => [...prev, newMapping]); // Optimistically add new mapping to the UI
       toast.success('New source mapping created.');
       setIsDialogOpen(false); // Close the dialog
@@ -119,11 +106,8 @@ export const SourceMappingManager = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this mapping rule?')) return;
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/mappings/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      setMappings((prev) => prev.filter((m) => m._id !== id)); // Optimistically remove from UI
+      await apiClient.delete(`/api/mappings/${id}`);
+      setMappings((prev) => prev.filter((m) => m._id !== id));
       toast.success('Mapping deleted.');
     } catch (error) {
       console.error('Delete mapping error:', error);

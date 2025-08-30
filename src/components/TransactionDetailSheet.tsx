@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { CategorySelector } from './CategorySelector';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
+import apiClient from '@/lib/apiClient';
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('en-US', {
@@ -72,14 +73,11 @@ export const TransactionDetailSheet = ({
 
   const onSaveNotes = async (values: { description: string }) => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/transactions/${transaction._id}`;
-      const response = await fetch(apiUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: values.description }),
-        credentials: 'include',
+      // --- THIS IS THE FIX ---
+      await apiClient.patch(`/api/transactions/${transaction._id}`, {
+        description: values.description,
       });
-      if (!response.ok) throw new Error('Failed to save notes');
+      // --- END FIX ---
       toast.success('Your notes have been updated.');
       onOpenChange(false);
       router.refresh();

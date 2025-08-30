@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { CalendarIcon, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import apiClient from '@/lib/apiClient';
 
 type Category = { _id: string; name: string };
 type SourceMapping = { _id: string; mappingName: string };
@@ -65,18 +66,17 @@ export function AddTransactionDialog() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // --- THIS IS THE FIX ---
+        // Use Promise.all with the apiClient for concurrent fetching
         const [catRes, accRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`, {
-            credentials: 'include',
-          }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/mappings`, {
-            credentials: 'include',
-          }),
+          apiClient.get('/api/categories'),
+          apiClient.get('/api/mappings'),
         ]);
-        const catData = await catRes.json();
-        const accData = await accRes.json();
-        setCategories(catData);
-        setAccounts(accData);
+
+        // Axios provides data directly on the .data property
+        setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+        setAccounts(Array.isArray(accRes.data) ? accRes.data : []);
+        // --- END FIX ---
       } catch (error) {
         console.error('Failed to fetch data for form', error);
       }
@@ -88,22 +88,16 @@ export function AddTransactionDialog() {
 
   const onSubmit = async (values: FormData) => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/transactions`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) throw new Error('Failed to create transaction');
-
+      // --- THIS IS THE FIX ---
+      // Use the apiClient to post the new transaction data
+      await apiClient.post('/api/transactions', values);
+      // --- END FIX ---
       toast.success('Manual transaction added.');
       setIsOpen(false);
       reset();
       router.refresh();
     } catch (error) {
+      console.error('Failed to add transaction', error);
       toast.error('Could not add transaction.');
     }
   };
