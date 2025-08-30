@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react'; // Import a loading icon
 
 function AuthCallback() {
   const router = useRouter();
@@ -52,11 +53,19 @@ function AuthCallback() {
     }
   }, [token, error, router]);
 
+  // --- THIS IS THE NEW UI ---
   return (
-    <div className='flex min-h-screen flex-col items-center justify-center'>
-      <p className='text-muted-foreground'>Please wait, authenticating...</p>
+    <div className='flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4'>
+      <div className='flex flex-col items-center gap-4'>
+        <Loader2 className='h-8 w-8 animate-spin text-primary' />
+        <h1 className='text-xl font-semibold'>Signing you in...</h1>
+        <p className='text-muted-foreground text-sm'>
+          Please wait while we set up your session.
+        </p>
+      </div>
     </div>
   );
+  // --- END NEW UI ---
 }
 
 // Wrap the component in Suspense because useSearchParams requires it
