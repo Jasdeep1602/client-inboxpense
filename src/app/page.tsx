@@ -1,4 +1,8 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 // A simple, inline SVG component for the Google 'G' logo
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -25,6 +29,16 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function HomePage() {
   const backendLoginUrl = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams.get('logout') === 'true') {
+      localStorage.removeItem('jwt');
+      // Optional: remove the query param from the URL for a cleaner look
+      router.replace('/');
+    }
+  }, [searchParams, router]);
 
   return (
     <main className='relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#020617] via-[#111827] to-[#020617] p-4'>

@@ -1,3 +1,5 @@
+// D:/expense/client/src/app/api/login/route.ts
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -12,19 +14,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a response object to set the cookie
-    const response = NextResponse.json({ success: true });
-
-    // Set the secure, HttpOnly cookie on the response
-    response.cookies.set('jwt', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-    });
-
-    return response;
+    // --- THIS IS THE FIX ---
+    // Simply return the token in the JSON response.
+    // We will no longer set a cookie from here.
+    return NextResponse.json({ success: true, token: token });
+    // --- END FIX ---
   } catch (error) {
     console.error(error);
     return NextResponse.json(

@@ -1,9 +1,11 @@
+// D:/expense/client/src/app/auth/callback/page.tsx
+
 'use client';
 
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react'; // Import a loading icon
+import { Loader2 } from 'lucide-react';
 
 function AuthCallback() {
   const router = useRouter();
@@ -12,7 +14,6 @@ function AuthCallback() {
   const error = searchParams.get('error');
 
   useEffect(() => {
-    // Handle potential errors from the backend redirect
     if (error) {
       toast.error(error || 'Authentication failed. Please try again.');
       router.push('/');
@@ -22,20 +23,23 @@ function AuthCallback() {
     if (token) {
       const login = async () => {
         try {
-          // Send the token to our own backend (the Next.js API route)
           const response = await fetch('/api/login', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token }),
           });
 
-          if (!response.ok) {
-            throw new Error('Failed to set authentication session.');
+          const data = await response.json();
+
+          if (!response.ok || !data.token) {
+            throw new Error('Failed to retrieve authentication token.');
           }
 
-          // On success, redirect to the dashboard
+          // --- THIS IS THE FIX ---
+          // Save the token to localStorage instead of relying on a cookie.
+          localStorage.setItem('jwt', data.token);
+          // --- END FIX ---
+
           toast.success('Successfully logged in!');
           router.push('/dashboard');
         } catch (err) {
@@ -47,13 +51,12 @@ function AuthCallback() {
       };
       login();
     } else {
-      // If no token is present, redirect home
       toast.error('No authentication token found.');
       router.push('/');
     }
   }, [token, error, router]);
 
-  // --- THIS IS THE NEW UI ---
+  // (The UI part remains the same)
   return (
     <div className='flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4'>
       <div className='flex flex-col items-center gap-4'>
@@ -65,10 +68,8 @@ function AuthCallback() {
       </div>
     </div>
   );
-  // --- END NEW UI ---
 }
 
-// Wrap the component in Suspense because useSearchParams requires it
 export default function AuthCallbackPage() {
   return (
     <Suspense>
