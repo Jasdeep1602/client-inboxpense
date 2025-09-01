@@ -14,11 +14,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const response = NextResponse.json({ success: true });
+
     // --- THIS IS THE FIX ---
-    // Simply return the token in the JSON response.
-    // We will no longer set a cookie from here.
-    return NextResponse.json({ success: true, token: token });
+    // Set a standard cookie that client-side JS can access.
+    // httpOnly is now `false`.
+    response.cookies.set('jwt', token, {
+      httpOnly: false, // <-- CRUCIAL CHANGE
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax', // Lax is fine since the cookie is set on the same domain
+      path: '/',
+      maxAge: 24 * 60 * 60, // 1 day in seconds
+    });
     // --- END FIX ---
+
+    return response;
   } catch (error) {
     console.error(error);
     return NextResponse.json(

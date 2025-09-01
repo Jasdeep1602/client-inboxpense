@@ -1,5 +1,4 @@
 // D:/expense/client/src/app/auth/callback/page.tsx
-
 'use client';
 
 import { useEffect, Suspense } from 'react';
@@ -23,23 +22,18 @@ function AuthCallback() {
     if (token) {
       const login = async () => {
         try {
+          // Send the token to our API route to set the cookie
           const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token }),
           });
 
-          const data = await response.json();
-
-          if (!response.ok || !data.token) {
-            throw new Error('Failed to retrieve authentication token.');
+          if (!response.ok) {
+            throw new Error('Failed to set authentication session.');
           }
 
-          // --- THIS IS THE FIX ---
-          // Save the token to localStorage instead of relying on a cookie.
-          localStorage.setItem('jwt', data.token);
-          // --- END FIX ---
-
+          // On success, the cookie is set. Now redirect.
           toast.success('Successfully logged in!');
           router.push('/dashboard');
         } catch (err) {
@@ -56,7 +50,7 @@ function AuthCallback() {
     }
   }, [token, error, router]);
 
-  // (The UI part remains the same)
+  // UI remains the same
   return (
     <div className='flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4'>
       <div className='flex flex-col items-center gap-4'>
