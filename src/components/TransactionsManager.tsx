@@ -29,6 +29,8 @@ import { MoreHorizontal, Download } from 'lucide-react';
 import { TransactionDetailSheet } from './TransactionDetailSheet';
 import { AddTransactionDialog } from './AddTransactionDialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import apiClient from '@/lib/apiClient';
+import { toast } from 'sonner';
 
 // --- TYPE DEFINITIONS ---
 export type Transaction = {
@@ -236,10 +238,49 @@ export const TransactionsManager = ({
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const handleExport = async (month: string, source: string) => {
+    const toastId = toast.loading('Generating your CSV file...');
+    try {
+      const response = await apiClient.get('/api/export/csv', {
+        params: { source, month },
+        responseType: 'blob', // Important: tells Axios to expect file data
+      });
+
+      // Extract filename from the Content-Disposition header
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `transactions-${source}-${month}.csv`; // Fallback filename
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch && filenameMatch.length > 1) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create a URL for the blob data
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      // Create a temporary link element to trigger the download
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up the temporary link and URL
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Your download has started.', { id: toastId });
+    } catch (error) {
+      console.error('CSV Export Error:', error);
+      toast.error('Failed to download CSV file.', { id: toastId });
+    }
+  };
+
   const renderGroup = (group: TransactionGroup) => {
     const currentSource = searchParams.get('source') || 'All';
     const monthPeriod = group.period.split('T')[0].substring(0, 7);
-    const exportUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/export/csv?source=${currentSource}&month=${monthPeriod}`;
+    // const exportUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/export/csv?source=${currentSource}&month=${monthPeriod}`;
 
     return (
       <div key={group.period}>
@@ -255,14 +296,14 @@ export const TransactionsManager = ({
               Debit: ₹{group.totalDebit.toFixed(2)}
             </span>
             {activeGroupBy === 'month' && (
-              <a
-                href={exportUrl}
+              <button
+                onClick={() => handleExport(monthPeriod, currentSource)}
                 title={`Download CSV for ${formatGroupName(
                   group.period,
                   activeGroupBy
                 )}`}>
                 <Download className='h-4 w-4 text-muted-foreground hover:text-foreground transition-colors' />
-              </a>
+              </button>
             )}
           </div>
         </div>
