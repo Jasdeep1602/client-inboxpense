@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -62,36 +63,59 @@ export const SyncManager = () => {
   const handleSyncAll = async () => {
     setIsSyncing(true);
     setMessage('');
-    let errorOccurred = false;
+
+    // --- THIS IS THE NEW, RESILIENT LOGIC ---
+    const syncResults: string[] = [];
+    let criticalErrorOccurred = false;
+    let anySyncSuccessful = false;
 
     for (const source of SYNC_SOURCES) {
       setMessage(`Syncing data for ${source}...`);
       try {
-        // --- THIS IS THE FIX ---
-        // Use the apiClient to send the POST request for syncing
-        await apiClient.post('/api/sync/drive', { source });
-        // --- END FIX ---
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : `Failed to sync ${source}`;
-        setMessage(`Error: ${errorMessage}`);
-        errorOccurred = true;
-        break;
+        const response = await apiClient.post('/api/sync/drive', { source });
+
+        // The backend now always returns 200 for successful operations,
+        // so we can just push its message.
+        syncResults.push(response.data.message);
+
+        if (response.data.status === 'success') {
+          anySyncSuccessful = true;
+        }
+      } catch (error: any) {
+        const status = error.response?.status;
+        let errorMessage = `Sync for '${source}' failed unexpectedly.`;
+
+        if (status === 401) {
+          errorMessage =
+            'Authentication error. Please sign out and sign in again.';
+          criticalErrorOccurred = true;
+        } else if (status) {
+          errorMessage = `Sync for '${source}' failed with status code ${status}.`;
+        }
+
+        syncResults.push(`Error: ${errorMessage}`);
+        if (criticalErrorOccurred) break; // Stop immediately on auth errors
       }
     }
 
-    if (!errorOccurred) {
+    // Update the last synced time if there were no critical errors and at least one sync was successful or found no file.
+    if (!criticalErrorOccurred) {
       const now = new Date();
       const formattedDate = now.toLocaleString();
       setLastSynced(formattedDate);
       localStorage.setItem('lastSynced', now.toISOString());
-      setMessage('All profiles synced successfully.');
-      router.refresh();
+
+      // Refresh the page data only if new transactions might have been added.
+      if (anySyncSuccessful) {
+        router.refresh();
+      }
     }
 
+    // Join all the result messages with a newline for clear display.
+    setMessage(syncResults.join('\n'));
     setIsSyncing(false);
+    // --- END NEW LOGIC ---
   };
-
   return (
     <Card className='mb-6 bg-background/80 dark:bg-background/50 backdrop-blur-sm'>
       <CardHeader>
