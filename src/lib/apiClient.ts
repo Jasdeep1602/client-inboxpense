@@ -1,16 +1,29 @@
-import axios from 'axios';
+// D:/expense/client/src/lib/apiClient.ts
 
-/**
- * A pre-configured Axios instance for making authenticated API requests.
- *
- * It includes the following configurations:
- * - `baseURL`: Sets the base path for all API requests to the backend URL defined in environment variables.
- * - `withCredentials`: This is the crucial setting that ensures the browser sends the HttpOnly `jwt` cookie
- *   with every request to the backend, allowing the server to authenticate the user.
- */
+import axios from 'axios';
+import { getCookie } from './utils'; // Import the new helper
+
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  withCredentials: true,
+  // withCredentials: true, // We no longer need this
 });
+
+// --- THIS IS THE FIX ---
+// Add a request interceptor to attach the token to every client-side request
+apiClient.interceptors.request.use(
+  (config) => {
+    // This code will run before each request is sent
+    const token = getCookie('jwt');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    // Do something with request error
+    return Promise.reject(error);
+  }
+);
+// --- END FIX ---
 
 export default apiClient;
