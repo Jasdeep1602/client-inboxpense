@@ -25,7 +25,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Icon } from './Icons';
-import { MoreHorizontal, Download } from 'lucide-react';
+import { MoreHorizontal, Download, Plus, Minus } from 'lucide-react';
 import { TransactionDetailSheet } from './TransactionDetailSheet';
 import { AddTransactionDialog } from './AddTransactionDialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -158,12 +158,14 @@ const MobileTransactionRow = ({
         </p>
       </div>
     </div>
-    <p
-      className={`text-right font-semibold ${
-        tx.type === 'debit' ? 'text-destructive' : 'text-green-600'
-      }`}>
-      ₹{tx.amount.toFixed(2)}
-    </p>
+    <div className='flex items-center justify-end gap-1 font-semibold'>
+      {tx.type === 'debit' ? (
+        <Minus className='h-3 w-3 stroke-[3] text-red-500' />
+      ) : (
+        <Plus className='h-3 w-3 stroke-[3] text-blue-500' />
+      )}
+      <span className='text-gray-500'>₹{tx.amount.toFixed(2)}</span>
+    </div>
   </div>
 );
 
@@ -191,14 +193,18 @@ const DesktopTransactionRow = ({
     <TableCell className='flex justify-center'>
       <TransactionCategoryIcon categoryId={tx.categoryId} />
     </TableCell>
-    <TableCell className='text-xs text-muted-foreground italic truncate max-w-[200px]'>
+    <TableCell className='text-xs text-muted-foreground truncate max-w-[200px]'>
       {tx.description}
     </TableCell>
-    <TableCell
-      className={`text-right font-semibold ${
-        tx.type === 'debit' ? 'text-destructive' : 'text-green-600'
-      }`}>
-      ₹{tx.amount.toFixed(2)}
+    <TableCell className='text-right font-semibold'>
+      <div className='flex items-center justify-end gap-1'>
+        {tx.type === 'debit' ? (
+          <Minus className=' h-3 w-3 stroke-[3] text-red-500' />
+        ) : (
+          <Plus className='h-3 w-3 stroke-[3] text-blue-500' />
+        )}
+        <span className='text-gray-500'>₹{tx.amount.toFixed(2)}</span>
+      </div>
     </TableCell>
   </TableRow>
 );

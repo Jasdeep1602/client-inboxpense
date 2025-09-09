@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import {
   Pagination,
   PaginationContent,
@@ -10,6 +10,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PaginationControllerProps {
   totalPages: number;
@@ -20,17 +27,27 @@ export const PaginationController = ({
 }: PaginationControllerProps) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const currentPage = Number(searchParams.get('page')) || 1;
+  const currentLimit = Number(searchParams.get('limit')) || 10;
 
-  // FIX: This function should accept number or string to be safe.
   const createPageURL = (pageNumber: number | string) => {
     const params = new URLSearchParams(searchParams);
     params.set('page', String(pageNumber));
     return `${pathname}?${params.toString()}`;
   };
 
+  // --- THIS IS THE NEW FUNCTION ---
+  const handleLimitChange = (newLimit: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('limit', newLimit);
+    params.set('page', '1'); // Reset to the first page when limit changes
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+  // --- END NEW FUNCTION ---
+
   if (totalPages <= 1) {
-    return null;
+    return null; // Don't render anything if there's only one page
   }
 
   const getPageNumbers = () => {
@@ -49,49 +66,67 @@ export const PaginationController = ({
   const pageNumbersToRender = getPageNumbers();
 
   return (
-    <Pagination>
-      <PaginationContent>
-        {/* Previous Button */}
-        <PaginationItem>
-          <PaginationPrevious
-            href={createPageURL(currentPage - 1)}
-            className={
-              currentPage <= 1
-                ? 'pointer-events-none text-muted-foreground'
-                : ''
-            }
-          />
-        </PaginationItem>
+    // --- THIS IS THE NEW WRAPPER ---
+    <div className='flex items-center justify-between w-full'>
+      <div className='text-sm text-muted-foreground hidden sm:block'>
+        Page {currentPage} of {totalPages}
+      </div>
 
-        {/* Page Number Links */}
-        {pageNumbersToRender.map((page, index) => (
-          <PaginationItem key={`${page}-${index}`}>
-            {/* FIX: Check if the item is an ellipsis string */}
-            {typeof page === 'string' ? (
-              <PaginationEllipsis />
-            ) : (
-              // If it's not a string, it must be a number, so it's safe to render a link
-              <PaginationLink
-                href={createPageURL(page)}
-                isActive={currentPage === page}>
-                {page}
-              </PaginationLink>
-            )}
+      <Pagination className='mx-0 w-auto'>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href={createPageURL(currentPage - 1)}
+              className={
+                currentPage <= 1
+                  ? 'pointer-events-none text-muted-foreground'
+                  : ''
+              }
+            />
           </PaginationItem>
-        ))}
 
-        {/* Next Button */}
-        <PaginationItem>
-          <PaginationNext
-            href={createPageURL(currentPage + 1)}
-            className={
-              currentPage >= totalPages
-                ? 'pointer-events-none text-muted-foreground'
-                : ''
-            }
-          />
-        </PaginationItem>
-      </PaginationContent>
-    </Pagination>
+          {pageNumbersToRender.map((page, index) => (
+            <PaginationItem key={`${page}-${index}`}>
+              {typeof page === 'string' ? (
+                <PaginationEllipsis />
+              ) : (
+                <PaginationLink
+                  href={createPageURL(page)}
+                  isActive={currentPage === page}>
+                  {page}
+                </PaginationLink>
+              )}
+            </PaginationItem>
+          ))}
+
+          <PaginationItem>
+            <PaginationNext
+              href={createPageURL(currentPage + 1)}
+              className={
+                currentPage >= totalPages
+                  ? 'pointer-events-none text-muted-foreground'
+                  : ''
+              }
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+
+      <div className='flex items-center space-x-2 text-sm'>
+        <p className='text-muted-foreground hidden md:block'>Rows per page</p>
+        <Select value={String(currentLimit)} onValueChange={handleLimitChange}>
+          <SelectTrigger className='w-[75px]'>
+            <SelectValue placeholder={currentLimit} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='10'>10</SelectItem>
+            <SelectItem value='20'>20</SelectItem>
+            <SelectItem value='50'>50</SelectItem>
+            <SelectItem value='100'>100</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+    // --- END NEW WRAPPER ---
   );
 };

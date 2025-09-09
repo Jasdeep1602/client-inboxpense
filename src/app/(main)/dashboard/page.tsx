@@ -27,7 +27,8 @@ type ApiResponse = {
 async function getTransactions(
   currentPage: number,
   source: string,
-  groupBy: string
+  groupBy: string,
+  limit: number
 ): Promise<ApiResponse> {
   const defaultResponse: ApiResponse = {
     type: 'list',
@@ -38,7 +39,7 @@ async function getTransactions(
   try {
     // authenticatedFetch handles the cookie logic for us.
     const response = await authenticatedFetch(
-      `/api/transactions?page=${currentPage}&limit=10&source=${source}&groupBy=${groupBy}`
+      `/api/transactions?page=${currentPage}&limit=${limit}&source=${source}&groupBy=${groupBy}`
     );
 
     if (!response.ok) {
@@ -57,15 +58,18 @@ async function TransactionsData({
   currentPage,
   currentSource,
   currentGroupBy,
+  currentLimit,
 }: {
   currentPage: number;
   currentSource: string;
   currentGroupBy: string;
+  currentLimit: number;
 }) {
   const { type, data, pagination } = await getTransactions(
     currentPage,
     currentSource,
-    currentGroupBy
+    currentGroupBy,
+    currentLimit
   );
 
   return (
@@ -86,6 +90,8 @@ export default async function DashboardPage({
   const currentPage = Number(params.page) || 1;
   const currentSource = (params.source as string) || 'All';
   const currentGroupBy = (params.groupBy as string) || 'none';
+  const currentLimit = Number(params.limit) || 10;
+
   return (
     // We wrap the entire data-dependent section in Suspense
     <>
@@ -98,6 +104,7 @@ export default async function DashboardPage({
             currentPage={currentPage}
             currentSource={currentSource}
             currentGroupBy={currentGroupBy}
+            currentLimit={currentLimit}
           />
         </Suspense>
       </div>
