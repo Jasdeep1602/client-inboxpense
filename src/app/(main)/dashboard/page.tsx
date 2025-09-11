@@ -28,7 +28,9 @@ async function getTransactions(
   currentPage: number,
   source: string,
   groupBy: string,
-  limit: number
+  limit: number,
+  from?: string,
+  to?: string
 ): Promise<ApiResponse> {
   const defaultResponse: ApiResponse = {
     type: 'list',
@@ -38,8 +40,20 @@ async function getTransactions(
 
   try {
     // authenticatedFetch handles the cookie logic for us.
+    const params = new URLSearchParams({
+      page: String(currentPage),
+      limit: String(limit),
+      source: source,
+      groupBy: groupBy,
+    });
+
+    if (from && to) {
+      params.append('from', from);
+      params.append('to', to);
+    }
+
     const response = await authenticatedFetch(
-      `/api/transactions?page=${currentPage}&limit=${limit}&source=${source}&groupBy=${groupBy}`
+      `/api/transactions?${params.toString()}`
     );
 
     if (!response.ok) {
@@ -59,17 +73,23 @@ async function TransactionsData({
   currentSource,
   currentGroupBy,
   currentLimit,
+  currentFrom,
+  currentTo,
 }: {
   currentPage: number;
   currentSource: string;
   currentGroupBy: string;
   currentLimit: number;
+  currentFrom?: string;
+  currentTo?: string;
 }) {
   const { type, data, pagination } = await getTransactions(
     currentPage,
     currentSource,
     currentGroupBy,
-    currentLimit
+    currentLimit,
+    currentFrom,
+    currentTo
   );
 
   return (
@@ -89,7 +109,13 @@ export default async function DashboardPage({
 
   const currentPage = Number(params.page) || 1;
   const currentSource = (params.source as string) || 'All';
-  const currentGroupBy = (params.groupBy as string) || 'none';
+  // --- THIS IS THE FIX: Read from/to and adjust groupBy ---
+  const currentFrom = params.from as string | undefined;
+  const currentTo = params.to as string | undefined;
+  // If a date range is applied, force groupBy to 'none'
+  const currentGroupBy =
+    currentFrom && currentTo ? 'none' : (params.groupBy as string) || 'none';
+  // --- END FIX ---
   const currentLimit = Number(params.limit) || 10;
 
   return (
@@ -105,6 +131,8 @@ export default async function DashboardPage({
             currentSource={currentSource}
             currentGroupBy={currentGroupBy}
             currentLimit={currentLimit}
+            currentFrom={currentFrom}
+            currentTo={currentTo}
           />
         </Suspense>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -30,7 +31,7 @@ import { TransactionDetailSheet } from './TransactionDetailSheet';
 import { AddTransactionDialog } from './AddTransactionDialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import apiClient from '@/lib/apiClient';
-import { toast } from 'sonner';
+import { DateRangeFilterDialog } from './DateRangeFilterDialog'; // Import the new dialog
 
 // --- TYPE DEFINITIONS ---
 export type Transaction = {
@@ -133,7 +134,6 @@ const TransactionCategoryIcon = ({
   </div>
 );
 
-// New Component for Mobile View
 const MobileTransactionRow = ({
   tx,
   onRowClick,
@@ -144,10 +144,10 @@ const MobileTransactionRow = ({
   <div
     onClick={() => onRowClick(tx)}
     className='flex items-center justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors'>
-    <div className='flex items-center gap-4'>
+    <div className='flex items-center gap-4 text-gray-500'>
       <TransactionCategoryIcon categoryId={tx.categoryId} />
       <div>
-        <p className='font-semibold truncate max-w-[150px]'>
+        <p className='font-semibold truncate max-w-[150px] text-gray-500'>
           {tx.description || tx.mode}
         </p>
         <p className='text-xs text-muted-foreground'>
@@ -160,16 +160,15 @@ const MobileTransactionRow = ({
     </div>
     <div className='flex items-center justify-end gap-1 font-semibold'>
       {tx.type === 'debit' ? (
-        <Minus className='h-3 w-3 stroke-[3] text-red-500' />
+        <Minus className='h-3 w-3 stroke-3 text-destructive' />
       ) : (
-        <Plus className='h-3 w-3 stroke-[3] text-blue-500' />
+        <Plus className='h-3 w-3 stroke-3 text-blue-500' />
       )}
       <span className='text-gray-500'>₹{tx.amount.toFixed(2)}</span>
     </div>
   </div>
 );
 
-// Original Component for Desktop View
 const DesktopTransactionRow = ({
   tx,
   onRowClick,
@@ -199,9 +198,9 @@ const DesktopTransactionRow = ({
     <TableCell className='text-right font-semibold'>
       <div className='flex items-center justify-end gap-1'>
         {tx.type === 'debit' ? (
-          <Minus className=' h-3 w-3 stroke-[3] text-red-500' />
+          <Minus className='h-3 w-3 stroke-3 text-destructive' />
         ) : (
-          <Plus className='h-3 w-3 stroke-[3] text-blue-500' />
+          <Plus className='h-3 w-3 stroke-3 text-blue-500' />
         )}
         <span className='text-gray-500'>₹{tx.amount.toFixed(2)}</span>
       </div>
@@ -231,8 +230,10 @@ export const TransactionsManager = ({
   const searchParams = useSearchParams();
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
+
   const activeGroupBy = searchParams.get('groupBy') || 'none';
   const activeFilter = searchParams.get('source') || 'All';
+  const isDateFilterApplied = !!searchParams.get('from');
 
   const handleFilterChange = (
     filterType: 'source' | 'groupBy',
@@ -241,6 +242,11 @@ export const TransactionsManager = ({
     const params = new URLSearchParams(searchParams);
     params.set('page', '1');
     params.set(filterType, value);
+    // If user clicks a groupBy button, it implies they want to clear the date filter
+    if (filterType === 'groupBy') {
+      params.delete('from');
+      params.delete('to');
+    }
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
@@ -249,12 +255,11 @@ export const TransactionsManager = ({
     try {
       const response = await apiClient.get('/api/export/csv', {
         params: { source, month },
-        responseType: 'blob', // Important: tells Axios to expect file data
+        responseType: 'blob',
       });
 
-      // Extract filename from the Content-Disposition header
       const contentDisposition = response.headers['content-disposition'];
-      let filename = `transactions-${source}-${month}.csv`; // Fallback filename
+      let filename = `transactions-${source}-${month}.csv`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="(.+)"/);
         if (filenameMatch && filenameMatch.length > 1) {
@@ -262,17 +267,13 @@ export const TransactionsManager = ({
         }
       }
 
-      // Create a URL for the blob data
       const url = window.URL.createObjectURL(new Blob([response.data]));
-
-      // Create a temporary link element to trigger the download
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
 
-      // Clean up the temporary link and URL
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
 
@@ -286,7 +287,6 @@ export const TransactionsManager = ({
   const renderGroup = (group: TransactionGroup) => {
     const currentSource = searchParams.get('source') || 'All';
     const monthPeriod = group.period.split('T')[0].substring(0, 7);
-    // const exportUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/export/csv?source=${currentSource}&month=${monthPeriod}`;
 
     return (
       <div key={group.period}>
@@ -313,7 +313,6 @@ export const TransactionsManager = ({
             )}
           </div>
         </div>
-        {/* Desktop Table */}
         <div className='hidden md:block border-b border-x'>
           <Table>
             <TransactionsTableHeader />
@@ -328,7 +327,6 @@ export const TransactionsManager = ({
             </TableBody>
           </Table>
         </div>
-        {/* Mobile List */}
         <div className='block md:hidden border-b border-x rounded-b-lg'>
           {group.transactions.map((tx) => (
             <MobileTransactionRow
@@ -350,7 +348,10 @@ export const TransactionsManager = ({
             <CardTitle>Transactions</CardTitle>
             <CardDescription>Your financial activity</CardDescription>
           </div>
-          <AddTransactionDialog />
+          <div className='flex items-center gap-2'>
+            <DateRangeFilterDialog />
+            <AddTransactionDialog />
+          </div>
         </CardHeader>
         <CardContent>
           <div className='flex items-center justify-between mb-6 flex-wrap gap-4'>
@@ -364,11 +365,13 @@ export const TransactionsManager = ({
               <ToggleGroupItem value='Mom'>Mom</ToggleGroupItem>
               <ToggleGroupItem value='Dad'>Dad</ToggleGroupItem>
             </ToggleGroup>
+
             <ToggleGroup
               type='single'
               variant={'outline'}
               defaultValue={activeGroupBy}
-              onValueChange={(v) => v && handleFilterChange('groupBy', v)}>
+              onValueChange={(v) => v && handleFilterChange('groupBy', v)}
+              disabled={isDateFilterApplied}>
               <ToggleGroupItem value='none'>None</ToggleGroupItem>
               <ToggleGroupItem value='week'>Week</ToggleGroupItem>
               <ToggleGroupItem value='month'>Month</ToggleGroupItem>
@@ -381,7 +384,6 @@ export const TransactionsManager = ({
             </div>
           ) : (
             <>
-              {/* Desktop Table */}
               <div className='hidden md:block border rounded-lg'>
                 <Table>
                   <TransactionsTableHeader />
@@ -396,7 +398,6 @@ export const TransactionsManager = ({
                   </TableBody>
                 </Table>
               </div>
-              {/* Mobile List */}
               <div className='block md:hidden border rounded-lg'>
                 {(transactionData as Transaction[]).map((tx) => (
                   <MobileTransactionRow
@@ -411,7 +412,7 @@ export const TransactionsManager = ({
 
           {(!transactionData || transactionData.length === 0) && (
             <div className='text-center h-24 flex items-center justify-center text-muted-foreground'>
-              No transactions found for this filter.
+              No transactions found for the selected filters.
             </div>
           )}
         </CardContent>
