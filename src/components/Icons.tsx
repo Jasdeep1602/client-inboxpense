@@ -47,7 +47,7 @@ import {
   Settings,
   LucideProps,
 } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Import the 'cn' utility from shadcn
+import { cn } from '@/lib/utils';
 
 const iconMap = {
   UtensilsCrossed,
@@ -100,27 +100,27 @@ const iconMap = {
 
 export type IconName = keyof typeof iconMap;
 
-// We use an intersection type to combine our custom props with the standard LucideProps
 type IconProps = {
   name: IconName | string;
   categoryName?: string;
-} & LucideProps; // This allows all Lucide props like `className`, `size`, etc.
+} & LucideProps;
 
 export const Icon = ({
   name,
   categoryName,
   className,
+  // --- THIS IS THE FIX: Destructure the style prop ---
+  style,
   ...props
 }: IconProps) => {
   const isKnownIcon = name in iconMap;
 
   if (isKnownIcon) {
     const LucideIcon = iconMap[name as IconName];
-    // We pass the className and all other props to the actual Lucide icon
-    return <LucideIcon className={className} {...props} />;
+    // Pass the style prop to the Lucide icon
+    return <LucideIcon className={className} style={style} {...props} />;
   }
 
-  // --- FALLBACK LOGIC FIX ---
   const getInitials = (nameStr: string = '') => {
     const words = nameStr.split(' ').filter(Boolean);
     if (words.length > 1) {
@@ -129,15 +129,14 @@ export const Icon = ({
     return nameStr.substring(0, 2).toUpperCase();
   };
 
-  // For the div, we ONLY use the `className`. We discard the other SVG-specific props from `...props`.
-  // The `cn` utility safely merges the default classes with any `className` passed in the props.
+  // --- THIS IS THE FIX: Pass the style prop to the fallback div ---
   return (
     <div
       className={cn(
         'flex items-center justify-center h-full w-full font-bold text-xs',
         className
       )}
-      // We do NOT spread `{...props}` here anymore.
+      style={style} // This will apply the color to the initials
     >
       {getInitials(categoryName)}
     </div>

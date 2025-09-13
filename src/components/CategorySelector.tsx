@@ -15,24 +15,36 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import { toast } from 'sonner';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import apiClient from '@/lib/apiClient';
+import { Icon } from './Icons';
+
+// --- NEW, HIERARCHICAL TYPE DEFINITIONS ---
+type Subcategory = {
+  _id: string;
+  name: string;
+  color: string;
+  icon: string;
+};
 
 type Category = {
   _id: string;
   name: string;
-  color: string;
+  subcategories: Subcategory[];
 };
 
 type Transaction = {
   _id: string;
-  categoryId?: {
+  subcategoryId?: {
+    // Updated from categoryId
     _id: string;
     name: string;
     color: string;
+    icon: string;
   };
 };
 
@@ -43,18 +55,16 @@ export function CategorySelector({
 }) {
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(
-    transaction.categoryId?._id || ''
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(
+    transaction.subcategoryId?._id || ''
   );
   const router = useRouter();
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        // --- THIS IS THE FIX ---
         const response = await apiClient.get('/api/categories');
         setCategories(Array.isArray(response.data) ? response.data : []);
-        // --- END FIX ---
       } catch (error) {
         console.error('Failed to fetch categories', error);
       }
@@ -62,17 +72,18 @@ export function CategorySelector({
     fetchCategories();
   }, []);
 
-  const handleSelectCategory = async (categoryId: string) => {
-    const newCategoryId = categoryId === selectedCategoryId ? null : categoryId;
+  const handleSelect = async (subcategoryId: string) => {
+    const newSubcategoryId =
+      subcategoryId === selectedSubcategoryId ? null : subcategoryId;
 
     try {
-      // --- THIS IS THE FIX ---
+      // --- THIS IS THE FIX: The endpoint now expects `subcategoryId` ---
       await apiClient.patch(`/api/transactions/${transaction._id}/category`, {
-        categoryId: newCategoryId,
+        subcategoryId: newSubcategoryId,
       });
       // --- END FIX ---
       toast.success('Transaction category updated.');
-      setSelectedCategoryId(newCategoryId || '');
+      setSelectedSubcategoryId(newSubcategoryId || '');
       setOpen(false);
       router.refresh();
     } catch (error) {
@@ -80,9 +91,9 @@ export function CategorySelector({
     }
   };
 
-  const selectedCategory = categories.find(
-    (cat) => cat._id === selectedCategoryId
-  );
+  const selectedSubcategory = categories
+    .flatMap((cat) => cat.subcategories)
+    .find((sub) => sub._id === selectedSubcategoryId);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -92,13 +103,15 @@ export function CategorySelector({
           role='combobox'
           aria-expanded={open}
           className='w-auto justify-between font-normal text-xs h-8'>
-          {selectedCategory ? (
+          {selectedSubcategory ? (
             <>
-              <span
-                className='w-2 h-2 rounded-full mr-2'
-                style={{ backgroundColor: selectedCategory.color }}
+              <Icon
+                name={selectedSubcategory.icon}
+                categoryName={selectedSubcategory.name}
+                className='w-4 h-4 mr-2'
+                style={{ color: selectedSubcategory.color }}
               />
-              {selectedCategory.name}
+              {selectedSubcategory.name}
             </>
           ) : (
             'Uncategorized'
@@ -111,26 +124,42 @@ export function CategorySelector({
           <CommandInput placeholder='Search category...' />
           <CommandList>
             <CommandEmpty>No categories found.</CommandEmpty>
-            <CommandGroup>
-              <div className='max-h-[200px] overflow-y-auto'>
-                {categories.map((category) => (
+            {/* --- THIS IS THE FIX: Render grouped categories --- */}
+            {categories.map((category) => (
+              <CommandGroup key={category._id} heading={category.name}>
+                {category.subcategories.map((subcategory) => (
                   <CommandItem
-                    key={category._id}
-                    value={category.name}
-                    onSelect={() => handleSelectCategory(category._id)}>
+                    key={subcategory._id}
+                    value={subcategory.name}
+                    onSelect={() => handleSelect(subcategory._id)}>
                     <Check
                       className={cn(
                         'mr-2 h-4 w-4',
-                        selectedCategoryId === category._id
+                        selectedSubcategoryId === subcategory._id
                           ? 'opacity-100'
                           : 'opacity-0'
                       )}
                     />
-                    {category.name}
+                    <Icon
+                      name={subcategory.icon}
+                      categoryName={subcategory.name}
+                      className='w-4 h-4 mr-2'
+                      style={{ color: subcategory.color }}
+                    />
+                    <span>{subcategory.name}</span>
                   </CommandItem>
                 ))}
-              </div>
+              </CommandGroup>
+            ))}
+            {/* Add an option to un-assign the category */}
+            <CommandSeparator />
+            <CommandGroup>
+              <CommandItem onSelect={() => handleSelect('')}>
+                <X className='mr-2 h-4 w-4' />
+                Uncategorized
+              </CommandItem>
             </CommandGroup>
+            {/* --- END FIX --- */}
           </CommandList>
         </Command>
       </PopoverContent>

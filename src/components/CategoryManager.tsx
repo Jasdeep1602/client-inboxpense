@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -30,63 +30,183 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { Icon } from './Icons';
+import { PlusCircle, Trash2, Edit } from 'lucide-react';
+import { Icon, IconName } from './Icons';
 import apiClient from '@/lib/apiClient';
+import { Skeleton } from './ui/skeleton';
+import { Badge } from './ui/badge';
+import { ColorPicker } from './ColorPicker'; // <-- IMPORT THE NEW COMPONENT
+import { Controller } from 'react-hook-form'; // <-- IMPORT CONTROLLER
 
-// Define the type for a single category object received from the API
+// --- Type Definitions ---
+type Subcategory = {
+  _id: string;
+  name: string;
+  icon: string;
+  color: string;
+  isDefault: boolean;
+};
+
 type Category = {
   _id: string;
   name: string;
   icon: string;
   color: string;
-  matchStrings: string[];
   isDefault: boolean;
+  subcategories: Subcategory[];
 };
 
-// Define the type for the data submitted from the "Add New" form
 type CategoryFormData = {
   name: string;
-  icon: string;
   color: string;
-  matchStrings: string;
 };
 
-// --- Sub-component for the Delete Confirmation Dialog ---
-// This keeps the delete logic clean and self-contained.
+// --- Add/Edit Dialog Component ---
+const CategoryDialog = ({
+  mode,
+  category,
+  parentId,
+  onSuccess,
+}: {
+  mode: 'add' | 'edit';
+  category?: Category | Subcategory;
+  parentId?: string | null;
+  onSuccess: () => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+    reset,
+    control,
+  } = useForm<CategoryFormData>();
+
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        name: category?.name || '',
+        color: category?.color || '#888888',
+      });
+    }
+  }, [isOpen, category, reset]);
+
+  const onSubmit = async (values: CategoryFormData) => {
+    try {
+      const payload = { ...values, parentId };
+
+      if (mode === 'edit' && category) {
+        await apiClient.put(`/api/categories/${category._id}`, payload);
+        toast.success(`"${values.name}" has been updated.`);
+      } else {
+        await apiClient.post('/api/categories', payload);
+        toast.success(
+          parentId
+            ? `Subcategory "${values.name}" created.`
+            : `Category "${values.name}" created.`
+        );
+      }
+      onSuccess();
+      setIsOpen(false);
+    } catch (error) {
+      toast.error('An error occurred. Please try again.');
+    }
+  };
+
+  const title =
+    mode === 'add'
+      ? parentId
+        ? 'Add New Subcategory'
+        : 'Add New Category'
+      : `Edit "${category?.name}"`;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {mode === 'add' && !parentId ? (
+          <Button>
+            <PlusCircle className='mr-2 h-4 w-4' /> New Category
+          </Button>
+        ) : (
+          <Button
+            variant={mode === 'add' ? 'ghost' : 'outline'}
+            size='icon'
+            className='h-7 w-7'>
+            {mode === 'add' ? (
+              <PlusCircle className='h-4 w-4' />
+            ) : (
+              <Edit className='h-4 w-4' />
+            )}
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className='space-y-4 pt-4'>
+          <div>
+            <Label htmlFor='name'>Name</Label>
+            <Input
+              id='name'
+              {...register('name', { required: true })}
+              placeholder='e.g., Groceries'
+            />
+          </div>
+          <div>
+            <Label>Color</Label>
+            <Controller
+              control={control}
+              name='color'
+              render={({ field }) => (
+                <ColorPicker value={field.value} onChange={field.onChange} />
+              )}
+            />
+          </div>
+          <DialogFooter>
+            <Button type='submit' disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// --- Delete Confirmation Dialog ---
 const DeleteCategoryDialog = ({
   category,
-  onCategoryDeleted,
+  isParent,
+  onSuccess,
 }: {
-  category: Category;
-  onCategoryDeleted: () => void;
+  category: Category | Subcategory;
+  isParent: boolean;
+  onSuccess: () => void;
 }) => {
   const handleDelete = async () => {
     try {
-      // --- THIS IS THE FIX ---
       await apiClient.delete(`/api/categories/${category._id}`);
-      // --- END FIX ---
-      toast.success(`Category "${category.name}" has been deleted.`);
-      onCategoryDeleted(); // Notify the parent component to update its state
+      toast.success(`"${category.name}" has been deleted.`);
+      onSuccess();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'An unknown error occurred.'
-      );
+      toast.error('An error occurred. Please try again.');
     }
   };
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        {/* This button is positioned absolutely over the CategoryItem */}
-        <Button
-          variant='destructive'
-          size='icon'
-          className='absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity'
-          onClick={(e) => e.stopPropagation()}>
+        <Button variant='destructive' size='icon' className='h-7 w-7'>
           <Trash2 className='h-4 w-4' />
         </Button>
       </AlertDialogTrigger>
@@ -94,12 +214,12 @@ const DeleteCategoryDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the
+            This action cannot be undone. This will permanently delete the{' '}
             <span className='font-semibold text-foreground'>
-              {' '}
-              {category.name}{' '}
-            </span>
-            category and remove it from all associated transactions.
+              {category.name}
+            </span>{' '}
+            category
+            {isParent && ' and all of its subcategories'}.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -115,155 +235,148 @@ const DeleteCategoryDialog = ({
 export const CategoryManager = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { isSubmitting },
-    reset,
-  } = useForm<CategoryFormData>();
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        // --- THIS IS THE FIX ---
-        const response = await apiClient.get('/api/categories');
-        setCategories(Array.isArray(response.data) ? response.data : []);
-        // --- END FIX ---
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        toast.error('Could not load your categories.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  const onSubmit = async (values: CategoryFormData) => {
-    const matchStringsArray = values.matchStrings
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+  const fetchCategories = async () => {
     try {
-      // --- THIS IS THE FIX ---
-      const response = await apiClient.post('/api/categories', {
-        ...values,
-        matchStrings: matchStringsArray,
-      });
-
-      const newCategory = response.data;
-      // --- END FIX ---
-      setCategories((prev) => [...prev, newCategory]);
-      toast.success('New category created.');
-      setIsDialogOpen(false);
-      reset();
+      const response = await apiClient.get('/api/categories');
+      setCategories(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error creating category:', error);
-      toast.error('Could not create category.');
+      toast.error('Could not load your categories.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCategoryDeleted = (deletedCategoryId: string) => {
-    setCategories((prev) => prev.filter((c) => c._id !== deletedCategoryId));
-    router.refresh(); // Refresh server components to update the main transaction list
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const handleSuccess = () => {
+    fetchCategories();
+    router.refresh();
   };
+
+  const defaultCategories = useMemo(
+    () => categories.filter((c) => c.isDefault),
+    [categories]
+  );
+  const customCategories = useMemo(
+    () => categories.filter((c) => !c.isDefault),
+    [categories]
+  );
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className='h-7 w-48' />
+          <Skeleton className='h-4 w-72' />
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <Skeleton className='h-12 w-full' />
+          <Skeleton className='h-12 w-full' />
+          <Skeleton className='h-12 w-full' />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className='mb-6 bg-background/80 dark:bg-background/50 backdrop-blur-sm'>
-      <CardHeader>
-        <CardTitle>Category Management</CardTitle>
-        <CardDescription>
-          Create categories and rules to automatically sort your transactions.
-        </CardDescription>
+      <CardHeader className='flex-row items-center justify-between'>
+        <div>
+          <CardTitle>Category Management</CardTitle>
+          <CardDescription>
+            Organize your spending with categories and subcategories.
+          </CardDescription>
+        </div>
+        <CategoryDialog mode='add' onSuccess={handleSuccess} />
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <p className='text-muted-foreground'>Loading categories...</p>
-        ) : (
-          <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4'>
-            {categories.map((cat) => (
-              <div key={cat._id} className='relative group'>
-                <div className='flex flex-col items-center justify-center p-4 border rounded-lg space-y-2 aspect-square text-center w-full h-full'>
-                  <div
-                    className='w-12 h-12 rounded-full flex items-center justify-center'
-                    style={{ backgroundColor: `${cat.color}20` }}>
-                    <Icon
-                      name={cat.icon}
-                      categoryName={cat.name}
-                      className='h-6 w-6'
-                      style={{ color: cat.color }}
-                    />
+        <Accordion type='multiple' className='w-full space-y-2'>
+          {[...customCategories, ...defaultCategories].map((cat) => (
+            <AccordionItem
+              value={cat._id}
+              key={cat._id}
+              className='border-b-0 rounded-md bg-muted/50'>
+              <div className='flex items-center p-2 rounded-md group'>
+                <Icon
+                  name={cat.icon as IconName}
+                  categoryName={cat.name}
+                  className='h-5 w-5 mr-3 flex-shrink-0'
+                  style={{ color: cat.color }}
+                />
+                <AccordionTrigger className='flex-1 text-left font-semibold py-0 hover:no-underline'>
+                  <div className='flex items-center gap-2'>
+                    {cat.name}
+                    {cat.subcategories.length > 0 && (
+                      <Badge variant='secondary' className='h-5'>
+                        {cat.subcategories.length}
+                      </Badge>
+                    )}
                   </div>
-                  <p className='font-semibold text-sm'>{cat.name}</p>
-                </div>
-                {!cat.isDefault && (
-                  <DeleteCategoryDialog
-                    category={cat}
-                    onCategoryDeleted={() => handleCategoryDeleted(cat._id)}
+                </AccordionTrigger>
+                <div className='flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity'>
+                  <CategoryDialog
+                    mode='add'
+                    parentId={cat._id}
+                    onSuccess={handleSuccess}
                   />
-                )}
+                  {!cat.isDefault && (
+                    <>
+                      <CategoryDialog
+                        mode='edit'
+                        category={cat}
+                        onSuccess={handleSuccess}
+                      />
+                      <DeleteCategoryDialog
+                        category={cat}
+                        isParent={true}
+                        onSuccess={handleSuccess}
+                      />
+                    </>
+                  )}
+                </div>
               </div>
-            ))}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <button className='flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg space-y-2 aspect-square text-muted-foreground hover:bg-muted/50 hover:text-foreground hover:border-solid transition-all'>
-                  <PlusCircle className='h-8 w-8' />
-                  <p className='font-semibold text-sm text-center'>Add New</p>
-                </button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Category</DialogTitle>
-                </DialogHeader>
-                <form
-                  onSubmit={handleSubmit(onSubmit)}
-                  className='space-y-4 pt-4'>
-                  <div>
-                    <Label htmlFor='name'>Category Name</Label>
-                    <Input
-                      id='name'
-                      {...register('name', { required: true })}
-                      placeholder='e.g., Side Hustle'
-                    />
+              <AccordionContent className='pt-2 pb-2 pl-8 pr-2 space-y-1 border-l-2 ml-4 border-dashed'>
+                {cat.subcategories.map((sub) => (
+                  <div
+                    key={sub._id}
+                    className='flex items-center justify-between p-2 rounded-md hover:bg-background/50 group'>
+                    <div className='flex items-center gap-3'>
+                      <Icon
+                        name={sub.icon as IconName}
+                        categoryName={sub.name}
+                        className='h-5 w-5'
+                        style={{ color: sub.color }}
+                      />
+                      <span className='text-sm'>{sub.name}</span>
+                    </div>
+                    <div className='flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+                      <CategoryDialog
+                        mode='edit'
+                        category={sub}
+                        parentId={cat._id}
+                        onSuccess={handleSuccess}
+                      />
+                      <DeleteCategoryDialog
+                        category={sub}
+                        isParent={false}
+                        onSuccess={handleSuccess}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor='icon'>Icon Name (from Lucide)</Label>
-                    <Input
-                      id='icon'
-                      {...register('icon', { required: true })}
-                      placeholder='e.g., Code'
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor='color'>Color (Hex)</Label>
-                    <Input
-                      id='color'
-                      {...register('color')}
-                      defaultValue='#888888'
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor='matchStrings'>
-                      Match Strings (comma-separated)
-                    </Label>
-                    <Input
-                      id='matchStrings'
-                      {...register('matchStrings')}
-                      placeholder='e.g., Upwork, Fiverr'
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button type='submit' disabled={isSubmitting}>
-                      {isSubmitting ? 'Creating...' : 'Create Category'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
+                ))}
+                {cat.subcategories.length === 0 && (
+                  <p className='text-xs text-muted-foreground pl-4 py-2'>
+                    No subcategories yet. Click the &#39;+&#39; to add one.
+                  </p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </CardContent>
     </Card>
   );
