@@ -43,7 +43,7 @@ export type Transaction = {
   type: 'credit' | 'debit';
   mode: string;
   description?: string;
-  categoryId?: {
+  subcategoryId?: {
     _id: string;
     name: string;
     icon: string;
@@ -107,24 +107,24 @@ const formatGroupName = (period: string, groupBy: string) => {
 };
 
 const TransactionCategoryIcon = ({
-  categoryId,
+  subcategory,
 }: {
-  categoryId?: Transaction['categoryId'];
+  subcategory?: Transaction['subcategoryId'];
 }) => (
   <div className='flex items-center justify-center w-10 h-10 rounded-full bg-muted'>
-    {categoryId ? (
+    {subcategory ? (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <Icon
-              name={categoryId.icon}
-              categoryName={categoryId.name}
+              name={subcategory.icon}
+              categoryName={subcategory.name}
               className='h-5 w-5'
-              style={{ color: categoryId.color }}
+              style={{ color: subcategory.color }}
             />
           </TooltipTrigger>
           <TooltipContent>
-            <p>{categoryId.name}</p>
+            <p>{subcategory.name}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -145,7 +145,7 @@ const MobileTransactionRow = ({
     onClick={() => onRowClick(tx)}
     className='flex items-center justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors'>
     <div className='flex items-center gap-4 text-gray-500'>
-      <TransactionCategoryIcon categoryId={tx.categoryId} />
+      <TransactionCategoryIcon subcategory={tx.subcategoryId} />
       <div>
         <p className='font-semibold truncate max-w-[150px] text-gray-500'>
           {tx.description || tx.mode}
@@ -190,7 +190,7 @@ const DesktopTransactionRow = ({
       <Badge variant='outline'>{tx.mode}</Badge>
     </TableCell>
     <TableCell className='flex justify-center'>
-      <TransactionCategoryIcon categoryId={tx.categoryId} />
+      <TransactionCategoryIcon subcategory={tx.subcategoryId} />
     </TableCell>
     <TableCell className='text-xs text-muted-foreground truncate max-w-[200px]'>
       {tx.description}

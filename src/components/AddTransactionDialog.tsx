@@ -23,17 +23,39 @@ import { Calendar } from '@/components/ui/calendar';
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import apiClient from '@/lib/apiClient';
+import { Icon, IconName } from './Icons';
 
-type Category = { _id: string; name: string };
+// Correct Type Definitions
+type Subcategory = { _id: string; name: string };
+type Category = {
+  _id: string;
+  name: string;
+  subcategories: Subcategory[];
+};
 type SourceMapping = { _id: string; mappingName: string };
 
 type FormData = {
@@ -41,9 +63,9 @@ type FormData = {
   type: 'debit' | 'credit';
   date: Date;
   description?: string;
-  mode: string; // The "Account"
-  source: string; // The "Profile"
-  categoryId?: string;
+  mode: string;
+  source: string;
+  subcategoryId?: string;
 };
 
 export function AddTransactionDialog() {
@@ -52,46 +74,44 @@ export function AddTransactionDialog() {
   const [accounts, setAccounts] = useState<SourceMapping[]>([]);
   const router = useRouter();
 
+  const [selectedSubcategory, setSelectedSubcategory] =
+    useState<Subcategory | null>(null);
+
   const {
     register,
     handleSubmit,
     control,
     formState: { isSubmitting },
+    setValue,
     reset,
   } = useForm<FormData>({
     defaultValues: { date: new Date(), type: 'debit', source: 'Me' },
   });
 
-  // Fetch categories and accounts (source mappings) for the dropdowns
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // --- THIS IS THE FIX ---
-        // Use Promise.all with the apiClient for concurrent fetching
-        const [catRes, accRes] = await Promise.all([
-          apiClient.get('/api/categories'),
-          apiClient.get('/api/mappings'),
-        ]);
-
-        // Axios provides data directly on the .data property
-        setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-        setAccounts(Array.isArray(accRes.data) ? accRes.data : []);
-        // --- END FIX ---
-      } catch (error) {
-        console.error('Failed to fetch data for form', error);
-      }
-    };
-    if (isOpen) {
+    if (!isOpen) {
+      // Reset custom state when dialog closes
+      setSelectedSubcategory(null);
+    } else {
+      const fetchData = async () => {
+        try {
+          const [catRes, accRes] = await Promise.all([
+            apiClient.get('/api/categories'),
+            apiClient.get('/api/mappings'),
+          ]);
+          setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+          setAccounts(Array.isArray(accRes.data) ? accRes.data : []);
+        } catch (error) {
+          console.error('Failed to fetch data for form', error);
+        }
+      };
       fetchData();
     }
   }, [isOpen]);
 
   const onSubmit = async (values: FormData) => {
     try {
-      // --- THIS IS THE FIX ---
-      // Use the apiClient to post the new transaction data
       await apiClient.post('/api/transactions', values);
-      // --- END FIX ---
       toast.success('Manual transaction added.');
       setIsOpen(false);
       reset();
@@ -100,6 +120,11 @@ export function AddTransactionDialog() {
       console.error('Failed to add transaction', error);
       toast.error('Could not add transaction.');
     }
+  };
+
+  const handleSubcategorySelect = (subcategory: Subcategory | null) => {
+    setSelectedSubcategory(subcategory);
+    setValue('subcategoryId', subcategory?._id, { shouldValidate: true });
   };
 
   return (
@@ -183,7 +208,7 @@ export function AddTransactionDialog() {
 
           <Controller
             control={control}
-            name='mode' // Account
+            name='mode'
             render={({ field }) => (
               <div>
                 <Label>Account</Label>
@@ -206,33 +231,58 @@ export function AddTransactionDialog() {
             )}
           />
 
-          <Controller
-            control={control}
-            name='categoryId'
-            render={({ field }) => (
-              <div>
-                <Label>Category</Label>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select a category' />
-                  </SelectTrigger>
-                  <SelectContent className='max-h-45 overflow-y-auto'>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          />
+          <div>
+            <Label>Category</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant='outline'
+                  role='combobox'
+                  className='w-full justify-between font-normal'>
+                  {selectedSubcategory ? (
+                    <>{selectedSubcategory.name}</>
+                  ) : (
+                    'Select a category'
+                  )}
+                  <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className='w-[--radix-popover-trigger-width]'>
+                <DropdownMenuLabel>Assign Category</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup className='max-h-[200px] overflow-y-auto'>
+                  {categories.map((category) =>
+                    category.subcategories.length > 0 ? (
+                      <DropdownMenuSub key={category._id}>
+                        <DropdownMenuSubTrigger>
+                          <span>{category.name}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {category.subcategories.map((sub) => (
+                              <DropdownMenuItem
+                                key={sub._id}
+                                onSelect={() => handleSubcategorySelect(sub)}>
+                                <span>{sub.name}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    ) : (
+                      <DropdownMenuItem key={category._id} disabled>
+                        <span>{category.name}</span>
+                      </DropdownMenuItem>
+                    )
+                  )}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           <Controller
             control={control}
-            name='source' // Profile
+            name='source'
             render={({ field }) => (
               <div>
                 <Label>Profile</Label>
