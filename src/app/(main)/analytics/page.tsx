@@ -17,46 +17,50 @@ import { DashboardSkeleton } from '@/components/DashboardSkeleton';
 import apiClient from '@/lib/apiClient';
 
 // --- Type Definitions for API Data ---
-type MonthlySummaryData = {
+export type MonthlySummaryData = {
   month: string;
   totalCredit: number;
   totalDebit: number;
 };
 
-type CategorySpendingData = {
-  month: string;
-  categories: { name: string; color: string; total: number }[];
-  monthlyTotal: number;
-};
-
-type AggregatedCategoryData = {
+// This now represents a PARENT category's aggregated spending
+export type CategorySpendingData = {
+  parentId: string;
   name: string;
-  value: number;
   color: string;
+  value: number;
 };
 
-type DetailData =
-  | { type: 'month'; month: string; totalCredit: number; totalDebit: number }
-  | { type: 'category'; name: string; value: number; color: string };
+// This type is for the drill-down data, exported for use in the sheet
+export type SubcategoryBreakdownData = {
+  name: string;
+  color: string;
+  total: number;
+};
+
+// The data passed to the detail sheet
+export type DetailData =
+  | { type: 'month'; data: MonthlySummaryData }
+  | { type: 'category'; data: CategorySpendingData };
 
 // --- Main Data Display Component ---
 function AnalyticsData({
-  initialMonthlySummary,
-  initialCategorySpending,
+  monthlySummary,
+  categorySpending,
 }: {
-  initialMonthlySummary: MonthlySummaryData[];
-  initialCategorySpending: CategorySpendingData[];
+  monthlySummary: MonthlySummaryData[];
+  categorySpending: CategorySpendingData[];
 }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedData, setSelectedData] = useState<DetailData | null>(null);
 
   const handleMonthSelect = (data: MonthlySummaryData) => {
-    setSelectedData({ type: 'month', ...data });
+    setSelectedData({ type: 'month', data });
     setIsSheetOpen(true);
   };
 
-  const handleCategorySelect = (data: AggregatedCategoryData) => {
-    setSelectedData({ type: 'category', ...data });
+  const handleCategorySelect = (data: CategorySpendingData) => {
+    setSelectedData({ type: 'category', data });
     setIsSheetOpen(true);
   };
 
@@ -65,13 +69,13 @@ function AnalyticsData({
       <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-5'>
         <div className='lg:col-span-3'>
           <MonthlySummaryChart
-            data={initialMonthlySummary}
+            data={monthlySummary}
             onMonthSelect={handleMonthSelect}
           />
         </div>
         <div className='lg:col-span-2'>
           <CategorySpendingChart
-            data={initialCategorySpending}
+            data={categorySpending}
             onCategorySelect={handleCategorySelect}
           />
         </div>
@@ -85,7 +89,7 @@ function AnalyticsData({
   );
 }
 
-// --- THIS IS THE NEW CLIENT COMPONENT THAT USES THE HOOKS ---
+// --- Main Client Component That Fetches Data ---
 function AnalyticsView() {
   const router = useRouter();
   const pathname = usePathname();
@@ -106,8 +110,6 @@ function AnalyticsView() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // --- THIS IS THE FIX ---
-        // Use the apiClient which is pre-configured with the base URL and credentials
         const [monthlyRes, categoryRes] = await Promise.all([
           apiClient.get(`/api/summary/monthly?source=${currentSource}`),
           apiClient.get(
@@ -115,14 +117,12 @@ function AnalyticsView() {
           ),
         ]);
 
-        // With Axios, the response data is directly available on `response.data`
-        const monthlyData = monthlyRes.data;
-        const categoryData = categoryRes.data;
-
-        // Ensure that the data is an array before setting the state.
-        setMonthlySummary(Array.isArray(monthlyData) ? monthlyData : []);
-        setCategorySpending(Array.isArray(categoryData) ? categoryData : []);
-        // --- END FIX ---
+        setMonthlySummary(
+          Array.isArray(monthlyRes.data) ? monthlyRes.data : []
+        );
+        setCategorySpending(
+          Array.isArray(categoryRes.data) ? categoryRes.data : []
+        );
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
         setMonthlySummary([]);
@@ -181,16 +181,15 @@ function AnalyticsView() {
         <DashboardSkeleton />
       ) : (
         <AnalyticsData
-          initialMonthlySummary={monthlySummary}
-          initialCategorySpending={categorySpending}
+          monthlySummary={monthlySummary}
+          categorySpending={categorySpending}
         />
       )}
     </div>
   );
 }
 
-// --- THE MAIN PAGE COMPONENT IS NOW A WRAPPER ---
-// It is NOT a client component, so it can be prerendered.
+// --- The Main Page Component Wrapper ---
 export default function AnalyticsPage() {
   return (
     <Suspense fallback={<DashboardSkeleton />}>

@@ -4,57 +4,28 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import ApexChart from './ApexChart';
 import { ApexOptions } from 'apexcharts';
 import { useTheme } from 'next-themes';
-
-type AggregatedCategoryData = {
-  name: string;
-  value: number;
-  color: string;
-};
-
-type CategorySpendingData = {
-  month: string;
-  categories: { name: string; color: string; total: number }[];
-  monthlyTotal: number;
-};
+import { CategorySpendingData } from '@/app/(main)/analytics/page'; // Import type from page
 
 export const CategorySpendingChart = ({
   data,
   onCategorySelect,
 }: {
   data: CategorySpendingData[];
-  onCategorySelect: (data: AggregatedCategoryData) => void;
+  onCategorySelect: (data: CategorySpendingData) => void;
 }) => {
   const { theme } = useTheme();
 
-  const aggregatedData = data
-    .flatMap((month) => month.categories)
-    .reduce((acc, category) => {
-      const existing = acc.find((item) => item.name === category.name);
-      if (existing) {
-        existing.value += category.total;
-      } else {
-        acc.push({
-          name: category.name,
-          value: Number(category.total),
-          color: category.color,
-        });
-      }
-      return acc;
-    }, [] as AggregatedCategoryData[])
-    .sort((a, b) => b.value - a.value);
+  const totalSpending = data.reduce((sum, item) => sum + item.value, 0);
 
-  const totalSpending = aggregatedData.reduce(
-    (sum, item) => sum + item.value,
-    0
-  );
   const series =
     totalSpending > 0
-      ? aggregatedData.map((item) =>
+      ? data.map((item) =>
           parseFloat(((item.value / totalSpending) * 100).toFixed(2))
         )
       : [];
-  const labels = aggregatedData.map((item) => item.name);
-  const colors = aggregatedData.map((item) => item.color);
+
+  const labels = data.map((item) => item.name);
+  const colors = data.map((item) => item.color);
 
   const chartOptions: ApexOptions = {
     chart: {
@@ -64,7 +35,7 @@ export const CategorySpendingChart = ({
       events: {
         dataPointSelection: (event, chartContext, config) => {
           const selectedIndex = config.dataPointIndex;
-          onCategorySelect(aggregatedData[selectedIndex]);
+          onCategorySelect(data[selectedIndex]);
         },
       },
     },
@@ -87,14 +58,12 @@ export const CategorySpendingChart = ({
           },
         },
         track: {
-          background: '#f1f5f9',
+          background: theme === 'dark' ? '#374151' : '#f1f5f9',
         },
       },
     },
     colors: colors,
     labels: labels,
-    // --- THIS IS THE FIX ---
-    // Restore the legend configuration
     legend: {
       show: true,
       position: 'bottom',
@@ -104,13 +73,12 @@ export const CategorySpendingChart = ({
         vertical: 5,
       },
       labels: {
-        colors: '#64748b',
+        colors: theme === 'dark' ? '#9ca3af' : '#64748b',
       },
       onItemHover: {
         highlightDataSeries: true,
       },
     },
-    // --- END FIX ---
     stroke: {
       lineCap: 'round',
     },
@@ -119,15 +87,14 @@ export const CategorySpendingChart = ({
       enabled: true,
       y: {
         formatter: (val, { seriesIndex }) => {
-          const originalDataPoint = aggregatedData[seriesIndex];
-          const amount = originalDataPoint ? originalDataPoint.value : 0;
-          return `₹${amount.toFixed(2)}`;
+          const originalDataPoint = data[seriesIndex];
+          return `₹${originalDataPoint.value.toFixed(2)}`;
         },
       },
     },
   };
 
-  if (!aggregatedData || aggregatedData.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <Card>
         <CardHeader>
