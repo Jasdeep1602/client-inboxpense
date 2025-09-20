@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -18,6 +18,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -30,12 +37,14 @@ type SourceMapping = {
   _id: string;
   mappingName: string;
   matchStrings: string[];
+  type: string;
 };
 
 // Define the type for the form data
 type MappingFormData = {
   mappingName: string;
   matchStrings: string; // The input will be a single comma-separated string
+  type: string;
 };
 
 export const SourceMappingManager = () => {
@@ -48,6 +57,7 @@ export const SourceMappingManager = () => {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
     setError,
     reset,
@@ -89,6 +99,7 @@ export const SourceMappingManager = () => {
       const response = await apiClient.post('/api/mappings', {
         mappingName: values.mappingName,
         matchStrings: matchStringsArray,
+        type: values.type,
       });
 
       const newMapping = response.data;
@@ -148,6 +159,34 @@ export const SourceMappingManager = () => {
                   </p>
                 )}
               </div>
+
+              <Controller
+                control={control}
+                name='type'
+                rules={{ required: 'Please select a type.' }}
+                render={({ field }) => (
+                  <div>
+                    <Label>Type</Label>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select an account type' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='Credit Card'>Credit Card</SelectItem>
+                        <SelectItem value='Debit Card'>Debit Card</SelectItem>
+                        <SelectItem value='Other'>Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.type && (
+                      <p className='text-sm text-destructive mt-1'>
+                        {errors.type.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+              />
               <div>
                 <Label htmlFor='matchStrings'>
                   Match Strings (comma-separated)
@@ -186,6 +225,9 @@ export const SourceMappingManager = () => {
                   className='flex items-center justify-between p-3 border rounded-lg bg-muted/50'>
                   <div>
                     <p className='font-semibold'>{mapping.mappingName}</p>
+                    <p className='text-xs text-muted-foreground'>
+                      {mapping.type}
+                    </p>
                     <div className='flex flex-wrap gap-1 mt-2'>
                       {mapping.matchStrings.map((str) => (
                         <Badge key={str} variant='secondary'>

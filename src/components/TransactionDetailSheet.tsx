@@ -10,6 +10,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'; // Import Select
+
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -87,6 +95,20 @@ export const TransactionDetailSheet = ({
     }
   };
 
+  const handleAccountTypeChange = async (newType: string) => {
+    try {
+      await apiClient.patch(
+        `/api/transactions/${transaction._id}/account-type`,
+        {
+          accountType: newType,
+        }
+      );
+      toast.success('Account type updated.');
+    } catch (error) {
+      toast.error('Failed to update account type.');
+    }
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
@@ -120,6 +142,23 @@ export const TransactionDetailSheet = ({
           <div className='space-y-2'>
             <DetailItem label='Date' value={formatDate(transaction.date)} />
             <DetailItem label='Account' value={transaction.mode} />
+            <DetailItem
+              label='Account Type'
+              value={
+                <Select
+                  value={transaction.accountType || ''}
+                  onValueChange={handleAccountTypeChange}>
+                  <SelectTrigger className='w-[180px] h-8 text-xs'>
+                    <SelectValue placeholder='Set a type' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='Credit Card'>Credit Card</SelectItem>
+                    <SelectItem value='Debit Card'>Debit Card</SelectItem>
+                    <SelectItem value='Other'>Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              }
+            />
             <DetailItem label='Profile' value={transaction.source} />
             <DetailItem
               label='Category'

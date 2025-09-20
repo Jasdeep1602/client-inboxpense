@@ -42,6 +42,7 @@ export type Transaction = {
   amount: number;
   type: 'credit' | 'debit';
   mode: string;
+  accountType?: string; // This is the new Type
   description?: string;
   subcategoryId?: {
     _id: string;
@@ -189,6 +190,9 @@ const DesktopTransactionRow = ({
     <TableCell>
       <Badge variant='outline'>{tx.mode}</Badge>
     </TableCell>
+    <TableCell className='text-xs text-muted-foreground'>
+      {tx.accountType || '—'}
+    </TableCell>
     <TableCell className='flex justify-center'>
       <TransactionCategoryIcon subcategory={tx.subcategoryId} />
     </TableCell>
@@ -213,6 +217,8 @@ const TransactionsTableHeader = () => (
     <TableRow>
       <TableHead className='w-[150px]'>Date</TableHead>
       <TableHead>Account</TableHead>
+      <TableHead>Type</TableHead>
+
       <TableHead className='text-center'>Category</TableHead>
       <TableHead>Description</TableHead>
       <TableHead className='text-right'>Amount</TableHead>
