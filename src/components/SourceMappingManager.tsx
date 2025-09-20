@@ -19,6 +19,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,8 +40,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
+import { useRouter } from 'next/navigation';
 
 // Define the type for a single mapping rule object
 type SourceMapping = {
@@ -51,8 +63,11 @@ export const SourceMappingManager = () => {
   const [mappings, setMappings] = useState<SourceMapping[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingMapping, setEditingMapping] = useState<SourceMapping | null>(
+    null
+  );
+  const router = useRouter();
 
-  // React Hook Form for managing the 'Add New' dialog form
   const form = useForm<MappingFormData>();
   const {
     register,
@@ -61,9 +76,9 @@ export const SourceMappingManager = () => {
     formState: { errors, isSubmitting },
     setError,
     reset,
+    setValue,
   } = form;
 
-  // Fetch existing mappings from the backend when the component first loads
   useEffect(() => {
     const fetchMappings = async () => {
       try {
@@ -79,9 +94,19 @@ export const SourceMappingManager = () => {
     fetchMappings();
   }, []);
 
-  // Function to handle the form submission for creating a new mapping rule
+  useEffect(() => {
+    if (isDialogOpen) {
+      if (editingMapping) {
+        setValue('mappingName', editingMapping.mappingName);
+        setValue('type', editingMapping.type);
+        setValue('matchStrings', editingMapping.matchStrings.join(', '));
+      } else {
+        reset({ mappingName: '', type: '', matchStrings: '' });
+      }
+    }
+  }, [isDialogOpen, editingMapping, setValue, reset]);
+
   const onSubmit = async (values: MappingFormData) => {
-    // Split the comma-separated match strings into an array, trim whitespace from each, and filter out any empty strings.
     const matchStringsArray = values.matchStrings
       .split(',')
       .map((s) => s.trim())
@@ -96,34 +121,54 @@ export const SourceMappingManager = () => {
     }
 
     try {
-      const response = await apiClient.post('/api/mappings', {
-        mappingName: values.mappingName,
-        matchStrings: matchStringsArray,
-        type: values.type,
-      });
-
-      const newMapping = response.data;
-      setMappings((prev) => [...prev, newMapping]); // Optimistically add new mapping to the UI
-      toast.success('New source mapping created.');
-      setIsDialogOpen(false); // Close the dialog
-      reset(); // Reset the form fields
+      if (editingMapping) {
+        // Update existing mapping
+        const response = await apiClient.put(
+          `/api/mappings/${editingMapping._id}`,
+          {
+            mappingName: values.mappingName,
+            matchStrings: matchStringsArray,
+            type: values.type,
+          }
+        );
+        setMappings((prev) =>
+          prev.map((m) => (m._id === editingMapping._id ? response.data : m))
+        );
+        toast.success('Mapping updated.');
+      } else {
+        // Create new mapping
+        const response = await apiClient.post('/api/mappings', {
+          mappingName: values.mappingName,
+          matchStrings: matchStringsArray,
+          type: values.type,
+        });
+        setMappings((prev) => [...prev, response.data]);
+        toast.success('New source mapping created.');
+      }
+      setIsDialogOpen(false);
+      setEditingMapping(null);
+      router.refresh();
     } catch (error) {
-      console.error('Create mapping error:', error);
-      toast.error('Could not create mapping.');
+      console.error('Save mapping error:', error);
+      toast.error('Could not save mapping.');
     }
   };
 
-  // Function to handle deleting a mapping rule
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this mapping rule?')) return;
     try {
       await apiClient.delete(`/api/mappings/${id}`);
       setMappings((prev) => prev.filter((m) => m._id !== id));
       toast.success('Mapping deleted.');
+      router.refresh();
     } catch (error) {
       console.error('Delete mapping error:', error);
       toast.error('Could not delete mapping.');
     }
+  };
+
+  const openEditDialog = (mapping: SourceMapping) => {
+    setEditingMapping(mapping);
+    setIsDialogOpen(true);
   };
 
   return (
@@ -135,13 +180,20 @@ export const SourceMappingManager = () => {
             Create rules to automatically clean up transaction sources.
           </CardDescription>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) setEditingMapping(null);
+          }}>
           <DialogTrigger asChild>
             <Button>+ Add New Mapping</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Source Mapping</DialogTitle>
+              <DialogTitle>
+                {editingMapping ? 'Edit' : 'Create New'} Source Mapping
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className='space-y-4 pt-4'>
               <div>
@@ -167,9 +219,7 @@ export const SourceMappingManager = () => {
                 render={({ field }) => (
                   <div>
                     <Label>Type</Label>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
                         <SelectValue placeholder='Select an account type' />
                       </SelectTrigger>
@@ -236,12 +286,38 @@ export const SourceMappingManager = () => {
                       ))}
                     </div>
                   </div>
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    onClick={() => handleDelete(mapping._id)}>
-                    <Trash2 className='h-4 w-4 text-destructive' />
-                  </Button>
+                  <div className='flex items-center gap-2'>
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      onClick={() => openEditDialog(mapping)}>
+                      <Edit className='h-4 w-4' />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant='ghost' size='icon'>
+                          <Trash2 className='h-4 w-4 text-destructive' />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the &quot;
+                            {mapping.mappingName}&quot; mapping rule. This
+                            action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(mapping._id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               ))
             ) : (

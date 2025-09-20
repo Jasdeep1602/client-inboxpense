@@ -25,7 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Icon } from './Icons';
+import { Icon, IconName } from './Icons';
 import { MoreHorizontal, Download, Plus, Minus } from 'lucide-react';
 import { TransactionDetailSheet } from './TransactionDetailSheet';
 import { AddTransactionDialog } from './AddTransactionDialog';
@@ -108,33 +108,31 @@ const formatGroupName = (period: string, groupBy: string) => {
   return period;
 };
 
-const TransactionCategoryIcon = ({
+const TransactionCategoryDisplay = ({
   subcategory,
 }: {
   subcategory?: Transaction['subcategoryId'];
-}) => (
-  <div className='flex items-center justify-center w-10 h-10 rounded-full bg-muted'>
-    {subcategory ? (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Icon
-              name={subcategory.icon}
-              categoryName={subcategory.name}
-              className='h-5 w-5'
-              style={{ color: subcategory.color }}
-            />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{subcategory.name}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    ) : (
-      <MoreHorizontal className='h-5 w-5 text-muted-foreground' />
-    )}
-  </div>
-);
+}) => {
+  if (subcategory) {
+    return (
+      <Badge variant='outline' className='font-normal'>
+        <Icon
+          name={subcategory.icon as IconName}
+          categoryName={subcategory.name}
+          className='mr-2 h-4 w-4'
+          style={{ color: subcategory.color }}
+        />
+        {subcategory.name}
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant='outline' className='font-normal text-muted-foreground'>
+      Uncategorized
+    </Badge>
+  );
+};
 
 const MobileTransactionRow = ({
   tx,
@@ -145,22 +143,18 @@ const MobileTransactionRow = ({
 }) => (
   <div
     onClick={() => onRowClick(tx)}
-    className='flex items-center justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors'>
-    <div className='flex items-center gap-4 text-gray-500'>
-      <TransactionCategoryIcon subcategory={tx.subcategoryId} />
-      <div>
-        <p className='font-semibold truncate max-w-[150px] text-gray-500'>
-          {tx.description || tx.mode}
-        </p>
-        <p className='text-xs text-muted-foreground'>
-          {new Date(tx.date).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-          })}
-        </p>
-      </div>
+    className='flex items-start justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors'>
+    <div className='flex flex-col items-start gap-1.5'>
+      <TransactionCategoryDisplay subcategory={tx.subcategoryId} />
+      <p className='text-xs text-muted-foreground'>
+        {new Date(tx.date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}
+      </p>
     </div>
-    <div className='flex items-center justify-end gap-1 font-semibold'>
+    <div className='flex items-center justify-end gap-1 font-semibold pt-1'>
       {tx.type === 'debit' ? (
         <Minus className='h-3 w-3 stroke-3 text-destructive' />
       ) : (
@@ -194,10 +188,10 @@ const DesktopTransactionRow = ({
     <TableCell className='text-xs text-muted-foreground'>
       {tx.accountType || '—'}
     </TableCell>
-    <TableCell className='flex justify-center'>
-      <TransactionCategoryIcon subcategory={tx.subcategoryId} />
+    <TableCell>
+      <TransactionCategoryDisplay subcategory={tx.subcategoryId} />
     </TableCell>
-    <TableCell className='text-xs text-muted-foreground truncate max-w-[200px]'>
+    <TableCell className='text-xs text-muted-foreground truncate max-w-[100px]'>
       {tx.description}
     </TableCell>
     <TableCell className='text-right font-semibold'>
@@ -220,7 +214,7 @@ const TransactionsTableHeader = () => (
       <TableHead>Account</TableHead>
       <TableHead>Type</TableHead>
 
-      <TableHead className='text-center'>Category</TableHead>
+      <TableHead>Category</TableHead>
       <TableHead>Description</TableHead>
       <TableHead className='text-right'>Amount</TableHead>
     </TableRow>
@@ -369,6 +363,14 @@ export const TransactionsManager = ({
           </Table>
         </div>
         <div className='block md:hidden border-b border-x rounded-b-lg'>
+          <div className='flex justify-between items-center p-3 border-b bg-muted/30'>
+            <p className='text-xs font-semibold text-muted-foreground'>
+              Details
+            </p>
+            <p className='text-xs font-semibold text-muted-foreground'>
+              Amount
+            </p>
+          </div>
           {(group.transactions || []).map((tx) => (
             <MobileTransactionRow
               key={tx._id}
@@ -442,6 +444,14 @@ export const TransactionsManager = ({
                 </Table>
               </div>
               <div className='block md:hidden border rounded-lg'>
+                <div className='flex justify-between items-center p-3 border-b bg-muted/30'>
+                  <p className='text-xs font-semibold text-muted-foreground'>
+                    Details
+                  </p>
+                  <p className='text-xs font-semibold text-muted-foreground'>
+                    Amount
+                  </p>
+                </div>
                 {(localTransactionData as Transaction[]).map((tx, index) => (
                   <MobileTransactionRow
                     key={tx._id || index}
