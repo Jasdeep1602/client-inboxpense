@@ -56,7 +56,7 @@ type Category = {
   name: string;
   subcategories: Subcategory[];
 };
-type SourceMapping = { _id: string; mappingName: string };
+type SourceMapping = { _id: string; mappingName: string; type: string };
 
 type FormData = {
   amount: number;
@@ -66,6 +66,7 @@ type FormData = {
   mode: string;
   source: string;
   subcategoryId?: string;
+  accountType?: string; // <-- ADD THIS
 };
 
 export function AddTransactionDialog() {
@@ -85,7 +86,13 @@ export function AddTransactionDialog() {
     setValue,
     reset,
   } = useForm<FormData>({
-    defaultValues: { date: new Date(), type: 'debit', source: 'Me' },
+    defaultValues: {
+      date: new Date(),
+      type: 'debit',
+      source: 'Me',
+      mode: '',
+      accountType: '',
+    },
   });
 
   useEffect(() => {
@@ -213,7 +220,16 @@ export function AddTransactionDialog() {
               <div>
                 <Label>Account</Label>
                 <Select
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    const selectedAccount = accounts.find(
+                      (acc) => acc.mappingName === value
+                    );
+                    setValue(
+                      'accountType',
+                      selectedAccount ? selectedAccount.type : ''
+                    );
+                  }}
                   defaultValue={field.value}>
                   <SelectTrigger>
                     <SelectValue placeholder='Select an account' />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -67,6 +67,7 @@ interface TransactionsManagerProps {
 // --- HELPER FUNCTIONS & SUB-COMPONENTS ---
 
 const formatGroupName = (period: string, groupBy: string) => {
+  if (!period) return 'Invalid Period'; // Safety check
   if (groupBy === 'month') {
     const [year, month] = period.split('-') as [string, string];
     return new Date(Date.UTC(Number(year), Number(month) - 1)).toLocaleString(
@@ -165,7 +166,7 @@ const MobileTransactionRow = ({
       ) : (
         <Plus className='h-3 w-3 stroke-3 text-blue-500' />
       )}
-      <span className='text-gray-500'>₹{tx.amount.toFixed(2)}</span>
+      <span className='text-gray-500'>₹{(tx.amount || 0).toFixed(2)}</span>
     </div>
   </div>
 );
@@ -206,7 +207,7 @@ const DesktopTransactionRow = ({
         ) : (
           <Plus className='h-3 w-3 stroke-3 text-blue-500' />
         )}
-        <span className='text-gray-500'>₹{tx.amount.toFixed(2)}</span>
+        <span className='text-gray-500'>₹{(tx.amount || 0).toFixed(2)}</span>
       </div>
     </TableCell>
   </TableRow>
@@ -234,8 +235,40 @@ export const TransactionsManager = ({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const [localTransactionData, setLocalTransactionData] =
+    useState(transactionData);
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
+
+  useEffect(() => {
+    setLocalTransactionData(transactionData);
+  }, [transactionData]);
+
+  const handleTransactionUpdate = (updatedTransaction: Transaction) => {
+    if (dataType === 'list') {
+      setLocalTransactionData((prevData) =>
+        (prevData as Transaction[]).map((t) =>
+          t._id === updatedTransaction._id ? updatedTransaction : t
+        )
+      );
+    } else {
+      setLocalTransactionData((prevData) =>
+        (prevData as TransactionGroup[]).map((group) => ({
+          ...group,
+          transactions: group.transactions.map((t) =>
+            t._id === updatedTransaction._id ? updatedTransaction : t
+          ),
+        }))
+      );
+    }
+    if (
+      selectedTransaction &&
+      selectedTransaction._id === updatedTransaction._id
+    ) {
+      setSelectedTransaction(updatedTransaction);
+    }
+  };
 
   const activeGroupBy = searchParams.get('groupBy') || 'none';
   const activeFilter = searchParams.get('source') || 'All';
@@ -248,7 +281,6 @@ export const TransactionsManager = ({
     const params = new URLSearchParams(searchParams);
     params.set('page', '1');
     params.set(filterType, value);
-    // If user clicks a groupBy button, it implies they want to clear the date filter
     if (filterType === 'groupBy') {
       params.delete('from');
       params.delete('to');
@@ -292,24 +324,27 @@ export const TransactionsManager = ({
 
   const renderGroup = (group: TransactionGroup) => {
     const currentSource = searchParams.get('source') || 'All';
-    const monthPeriod = group.period.split('T')[0].substring(0, 7);
 
     return (
-      <div key={group.period}>
+      <div key={group.period?.toString()}>
         <div className='flex justify-between items-center bg-muted/50 p-3 rounded-t-lg border-x border-t'>
           <h3 className='font-semibold text-sm'>
             {formatGroupName(group.period, activeGroupBy)}
           </h3>
           <div className='flex items-center text-xs space-x-4'>
             <span className='text-green-600 font-medium'>
-              Credit: ₹{group.totalCredit.toFixed(2)}
+              Credit: ₹{(group.totalCredit || 0).toFixed(2)}
             </span>
             <span className='text-destructive font-medium'>
-              Debit: ₹{group.totalDebit.toFixed(2)}
+              Debit: ₹{(group.totalDebit || 0).toFixed(2)}
             </span>
             {activeGroupBy === 'month' && (
               <button
-                onClick={() => handleExport(monthPeriod, currentSource)}
+                onClick={() => {
+                  if (group.period) {
+                    handleExport(group.period, currentSource);
+                  }
+                }}
                 title={`Download CSV for ${formatGroupName(
                   group.period,
                   activeGroupBy
@@ -323,7 +358,7 @@ export const TransactionsManager = ({
           <Table>
             <TransactionsTableHeader />
             <TableBody>
-              {group.transactions.map((tx) => (
+              {(group.transactions || []).map((tx) => (
                 <DesktopTransactionRow
                   key={tx._id}
                   tx={tx}
@@ -334,7 +369,7 @@ export const TransactionsManager = ({
           </Table>
         </div>
         <div className='block md:hidden border-b border-x rounded-b-lg'>
-          {group.transactions.map((tx) => (
+          {(group.transactions || []).map((tx) => (
             <MobileTransactionRow
               key={tx._id}
               tx={tx}
@@ -386,7 +421,7 @@ export const TransactionsManager = ({
 
           {dataType === 'grouped' ? (
             <div className='space-y-6'>
-              {(transactionData as TransactionGroup[]).map(renderGroup)}
+              {(localTransactionData as TransactionGroup[]).map(renderGroup)}
             </div>
           ) : (
             <>
@@ -394,20 +429,22 @@ export const TransactionsManager = ({
                 <Table>
                   <TransactionsTableHeader />
                   <TableBody>
-                    {(transactionData as Transaction[]).map((tx) => (
-                      <DesktopTransactionRow
-                        key={tx._id}
-                        tx={tx}
-                        onRowClick={setSelectedTransaction}
-                      />
-                    ))}
+                    {(localTransactionData as Transaction[]).map(
+                      (tx, index) => (
+                        <DesktopTransactionRow
+                          key={tx._id || index}
+                          tx={tx}
+                          onRowClick={setSelectedTransaction}
+                        />
+                      )
+                    )}
                   </TableBody>
                 </Table>
               </div>
               <div className='block md:hidden border rounded-lg'>
-                {(transactionData as Transaction[]).map((tx) => (
+                {(localTransactionData as Transaction[]).map((tx, index) => (
                   <MobileTransactionRow
-                    key={tx._id}
+                    key={tx._id || index}
                     tx={tx}
                     onRowClick={setSelectedTransaction}
                   />
@@ -416,7 +453,7 @@ export const TransactionsManager = ({
             </>
           )}
 
-          {(!transactionData || transactionData.length === 0) && (
+          {(!localTransactionData || localTransactionData.length === 0) && (
             <div className='text-center h-24 flex items-center justify-center text-muted-foreground'>
               No transactions found for the selected filters.
             </div>
@@ -429,6 +466,7 @@ export const TransactionsManager = ({
           transaction={selectedTransaction}
           isOpen={!!selectedTransaction}
           onOpenChange={(open) => !open && setSelectedTransaction(null)}
+          onTransactionUpdate={handleTransactionUpdate}
         />
       )}
     </>

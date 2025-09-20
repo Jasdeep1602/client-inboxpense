@@ -20,8 +20,9 @@ import { toast } from 'sonner';
 import { ChevronsUpDown, X } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { Icon, IconName } from './Icons';
+import { Transaction } from './TransactionsManager';
 
-// --- Type Definitions (Unchanged) ---
+// Type Definitions
 type Subcategory = {
   _id: string;
   name: string;
@@ -37,15 +38,12 @@ type Category = {
   subcategories: Subcategory[];
 };
 
-type Transaction = {
-  _id: string;
-  subcategoryId?: Subcategory;
-};
-
 export function CategorySelector({
   transaction,
+  onTransactionUpdate,
 }: {
   transaction: Transaction;
+  onTransactionUpdate: (updatedTransaction: Transaction) => void;
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const router = useRouter();
@@ -68,9 +66,13 @@ export function CategorySelector({
     if (subcategoryId === selectedSubcategory?._id) return;
 
     try {
-      await apiClient.patch(`/api/transactions/${transaction._id}/category`, {
-        subcategoryId: subcategoryId,
-      });
+      const response = await apiClient.patch(
+        `/api/transactions/${transaction._id}/category`,
+        {
+          subcategoryId: subcategoryId,
+        }
+      );
+      onTransactionUpdate(response.data);
       toast.success('Transaction category updated.');
       router.refresh();
     } catch (error) {
@@ -106,45 +108,11 @@ export function CategorySelector({
           Assign Category
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-
-        {/* --- THIS IS THE FIX: Added max-height and overflow --- */}
         <DropdownMenuGroup className='max-h-[250px] overflow-y-auto'>
-          {categories.map(
-            (category) =>
-              // --- THIS IS THE FIX: Conditional rendering logic ---
-              category.subcategories.length > 0 ? (
-                // If there ARE subcategories, render the nested menu
-                <DropdownMenuSub key={category._id}>
-                  <DropdownMenuSubTrigger>
-                    <Icon
-                      name={category.icon as IconName}
-                      categoryName={category.name}
-                      className='w-4 h-4 mr-2'
-                      style={{ color: category.color }}
-                    />
-                    <span>{category.name}</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      {category.subcategories.map((subcategory) => (
-                        <DropdownMenuItem
-                          key={subcategory._id}
-                          onSelect={() => handleSelect(subcategory._id)}>
-                          <Icon
-                            name={subcategory.icon as IconName}
-                            categoryName={subcategory.name}
-                            className='w-4 h-4 mr-2'
-                            style={{ color: subcategory.color }}
-                          />
-                          <span>{subcategory.name}</span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              ) : (
-                // If there are NO subcategories, render a disabled item
-                <DropdownMenuItem key={category._id} disabled>
+          {categories.map((category) =>
+            category.subcategories.length > 0 ? (
+              <DropdownMenuSub key={category._id}>
+                <DropdownMenuSubTrigger>
                   <Icon
                     name={category.icon as IconName}
                     categoryName={category.name}
@@ -152,12 +120,38 @@ export function CategorySelector({
                     style={{ color: category.color }}
                   />
                   <span>{category.name}</span>
-                </DropdownMenuItem>
-              )
-            // --- END FIX ---
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    {category.subcategories.map((subcategory) => (
+                      <DropdownMenuItem
+                        key={subcategory._id}
+                        onSelect={() => handleSelect(subcategory._id)}>
+                        <Icon
+                          name={subcategory.icon as IconName}
+                          categoryName={subcategory.name}
+                          className='w-4 h-4 mr-2'
+                          style={{ color: subcategory.color }}
+                        />
+                        <span>{subcategory.name}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            ) : (
+              <DropdownMenuItem key={category._id} disabled>
+                <Icon
+                  name={category.icon as IconName}
+                  categoryName={category.name}
+                  className='w-4 h-4 mr-2'
+                  style={{ color: category.color }}
+                />
+                <span>{category.name}</span>
+              </DropdownMenuItem>
+            )
           )}
         </DropdownMenuGroup>
-
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => handleSelect(null)}>
           <X className='mr-2 h-4 w-4' />

@@ -43,6 +43,7 @@ interface TransactionDetailSheetProps {
   transaction: Transaction;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onTransactionUpdate: (updatedTransaction: Transaction) => void;
 }
 
 // A reusable component for displaying detail items
@@ -63,6 +64,7 @@ export const TransactionDetailSheet = ({
   transaction,
   isOpen,
   onOpenChange,
+  onTransactionUpdate,
 }: TransactionDetailSheetProps) => {
   const router = useRouter();
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -79,13 +81,25 @@ export const TransactionDetailSheet = ({
     formState: { isSubmitting, isDirty },
   } = form;
 
+  // --- THIS IS THE FIX ---
+  // Determine if the transaction's mode comes from a custom mapping.
+  // Default modes from SMS parsing are 'Credit Card', 'Debit Card', or 'Other'.
+  // Any other mode means it was set by a user's source mapping rule.
+  const isFromSourceMapping =
+    transaction.mode !== 'Credit Card' &&
+    transaction.mode !== 'Debit Card' &&
+    transaction.mode !== 'Other';
+  // --- END FIX ---
+
   const onSaveNotes = async (values: { description: string }) => {
     try {
-      // --- THIS IS THE FIX ---
-      await apiClient.patch(`/api/transactions/${transaction._id}`, {
-        description: values.description,
-      });
-      // --- END FIX ---
+      const response = await apiClient.patch(
+        `/api/transactions/${transaction._id}`,
+        {
+          description: values.description,
+        }
+      );
+      onTransactionUpdate(response.data);
       toast.success('Your notes have been updated.');
       onOpenChange(false);
       router.refresh();
@@ -96,14 +110,18 @@ export const TransactionDetailSheet = ({
   };
 
   const handleAccountTypeChange = async (newType: string) => {
+    if (!newType || newType === transaction.accountType) return;
+
     try {
-      await apiClient.patch(
+      const response = await apiClient.patch(
         `/api/transactions/${transaction._id}/account-type`,
         {
           accountType: newType,
         }
       );
+      onTransactionUpdate(response.data);
       toast.success('Account type updated.');
+      router.refresh();
     } catch (error) {
       toast.error('Failed to update account type.');
     }
@@ -147,7 +165,9 @@ export const TransactionDetailSheet = ({
               value={
                 <Select
                   value={transaction.accountType || ''}
-                  onValueChange={handleAccountTypeChange}>
+                  onValueChange={handleAccountTypeChange}
+                  disabled={isFromSourceMapping} // <-- APPLY THE DISABLED LOGIC HERE
+                >
                   <SelectTrigger className='w-[180px] h-8 text-xs'>
                     <SelectValue placeholder='Set a type' />
                   </SelectTrigger>
@@ -162,7 +182,12 @@ export const TransactionDetailSheet = ({
             <DetailItem label='Profile' value={transaction.source} />
             <DetailItem
               label='Category'
-              value={<CategorySelector transaction={transaction} />}
+              value={
+                <CategorySelector
+                  transaction={transaction}
+                  onTransactionUpdate={onTransactionUpdate}
+                />
+              }
             />
           </div>
 
