@@ -9,11 +9,21 @@ export const DashboardSkeleton = () => (
         <Skeleton className='h-8 w-1/3' />
         <Skeleton className='h-4 w-1/2' />
       </CardHeader>
-      <CardContent>
+      <CardContent className='flex flex-col sm:flex-row gap-4 justify-between'>
         <div className='flex space-x-2'>
-          <Skeleton className='h-10 w-20' />
-          <Skeleton className='h-10 w-20' />
-          <Skeleton className='h-10 w-20' />
+          <Skeleton className='h-10 w-16' />
+          <Skeleton className='h-10 w-16' />
+          <Skeleton className='h-10 w-16' />
+          <Skeleton className='h-10 w-16' />
+        </div>
+        <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
+          <Skeleton className='h-10 w-full sm:w-48' />
+          <div className='flex space-x-2'>
+            <Skeleton className='h-10 w-full' />
+            <Skeleton className='h-10 w-full' />
+            <Skeleton className='h-10 w-full' />
+            <Skeleton className='h-10 w-full' />
+          </div>
         </div>
       </CardContent>
     </Card>

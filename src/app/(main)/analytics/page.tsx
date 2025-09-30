@@ -10,6 +10,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MonthlySummaryChart } from '@/components/MonthlySummaryChart';
 import { CategorySpendingChart } from '@/components/CategorySpendingChart';
 import { AnalyticsDetailSheet } from '@/components/AnalyticsDetailSheet';
@@ -36,6 +43,11 @@ export type SubcategoryBreakdownData = {
   name: string;
   color: string;
   total: number;
+};
+
+export type SourceMapping = {
+  _id: string;
+  mappingName: string;
 };
 
 // The data passed to the detail sheet
@@ -97,6 +109,7 @@ function AnalyticsView() {
 
   const currentSource = searchParams.get('source') || 'All';
   const currentPeriod = searchParams.get('period') || '6m';
+  const currentAccount = searchParams.get('account') || 'All';
 
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryData[]>(
     []
@@ -104,17 +117,21 @@ function AnalyticsView() {
   const [categorySpending, setCategorySpending] = useState<
     CategorySpendingData[]
   >([]);
+  const [accounts, setAccounts] = useState<SourceMapping[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [monthlyRes, categoryRes] = await Promise.all([
-          apiClient.get(`/api/summary/monthly?source=${currentSource}`),
+        const [monthlyRes, categoryRes, accountsRes] = await Promise.all([
+          apiClient.get(
+            `/api/summary/monthly?source=${currentSource}&account=${currentAccount}&period=${currentPeriod}`
+          ),
           apiClient.get(
             `/api/summary/spending-by-category?source=${currentSource}&period=${currentPeriod}`
           ),
+          apiClient.get('/api/mappings'),
         ]);
 
         setMonthlySummary(
@@ -123,19 +140,21 @@ function AnalyticsView() {
         setCategorySpending(
           Array.isArray(categoryRes.data) ? categoryRes.data : []
         );
+        setAccounts(Array.isArray(accountsRes.data) ? accountsRes.data : []);
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
         setMonthlySummary([]);
         setCategorySpending([]);
+        setAccounts([]);
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [currentSource, currentPeriod]);
+  }, [currentSource, currentPeriod, currentAccount]);
 
   const handleFilterChange = (
-    filterType: 'source' | 'period',
+    filterType: 'source' | 'period' | 'account',
     value: string
   ) => {
     const params = new URLSearchParams(searchParams);
@@ -153,7 +172,7 @@ function AnalyticsView() {
             periods.
           </CardDescription>
         </CardHeader>
-        <CardContent className='flex flex-col sm:flex-row gap-4 justify-between'>
+        <CardContent className='flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center'>
           <ToggleGroup
             type='single'
             variant={'outline'}
@@ -164,16 +183,42 @@ function AnalyticsView() {
             <ToggleGroupItem value='Mom'>Mom</ToggleGroupItem>
             <ToggleGroupItem value='Dad'>Dad</ToggleGroupItem>
           </ToggleGroup>
-          <ToggleGroup
-            type='single'
-            variant={'outline'}
-            defaultValue={currentPeriod}
-            onValueChange={(v) => v && handleFilterChange('period', v)}>
-            <ToggleGroupItem value='30d'>30 Days</ToggleGroupItem>
-            <ToggleGroupItem value='3m'>3 Months</ToggleGroupItem>
-            <ToggleGroupItem value='6m'>6 Months</ToggleGroupItem>
-            <ToggleGroupItem value='all'>All Time</ToggleGroupItem>
-          </ToggleGroup>
+          <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
+            <Select
+              value={currentAccount}
+              onValueChange={(v) => handleFilterChange('account', v)}>
+              <SelectTrigger className='w-full sm:w-[180px]'>
+                <SelectValue placeholder='Select an account' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='All'>All Accounts</SelectItem>
+                {accounts.map((acc) => (
+                  <SelectItem key={acc._id} value={acc.mappingName}>
+                    {acc.mappingName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <ToggleGroup
+              type='single'
+              variant={'outline'}
+              defaultValue={currentPeriod}
+              onValueChange={(v) => v && handleFilterChange('period', v)}
+              className='w-full sm:w-auto'>
+              <ToggleGroupItem value='current' className='w-full'>
+                Current
+              </ToggleGroupItem>
+              <ToggleGroupItem value='lastMonth' className='w-full'>
+                Last Month
+              </ToggleGroupItem>
+              <ToggleGroupItem value='3m' className='w-full'>
+                3 Months
+              </ToggleGroupItem>
+              <ToggleGroupItem value='6m' className='w-full'>
+                6 Months
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </CardContent>
       </Card>
 

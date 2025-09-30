@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import ApexChart from './ApexChart';
 import { ApexOptions } from 'apexcharts';
 import { useTheme } from 'next-themes';
+import { useSearchParams } from 'next/navigation';
 
 type MonthlySummaryData = {
   month: string;
@@ -11,11 +12,16 @@ type MonthlySummaryData = {
   totalDebit: number;
 };
 
-const formatMonth = (monthStr: string) => {
-  const [year, month] = monthStr.split('-');
-  return new Date(Number(year), Number(month) - 1).toLocaleString('en-US', {
-    month: 'short',
-  });
+const formatCategoryLabel = (dateStr: string, period: string) => {
+  if (!dateStr) return '';
+
+  const date = new Date(dateStr);
+  if (period === 'current' || period === 'lastMonth') {
+    // For daily views, show the day of the month
+    return date.getUTCDate().toString();
+  }
+  // For monthly views, show the short month name
+  return date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
 };
 
 export const MonthlySummaryChart = ({
@@ -26,26 +32,34 @@ export const MonthlySummaryChart = ({
   onMonthSelect: (data: MonthlySummaryData) => void;
 }) => {
   const { theme } = useTheme();
-  const categories = data.map((item) => formatMonth(item.month));
+  const searchParams = useSearchParams();
+  const currentPeriod = searchParams.get('period') || '6m';
+
+  const categories = data.map((item) =>
+    formatCategoryLabel(item.month, currentPeriod)
+  );
   const creditData = data.map((item) => item.totalCredit);
   const debitData = data.map((item) => item.totalDebit);
 
   const chartOptions: ApexOptions = {
     chart: {
-      type: 'bar',
+      type: 'line',
       height: 350,
-      stacked: false,
       toolbar: { show: false },
       events: {
-        dataPointSelection: (event, chartContext, config) => {
-          const selectedIndex = config.dataPointIndex;
-          onMonthSelect(data[selectedIndex]);
+        markerClick: (event, chartContext, { dataPointIndex }) => {
+          onMonthSelect(data[dataPointIndex]);
         },
       },
     },
-    plotOptions: { bar: { horizontal: false, columnWidth: '60%' } },
     dataLabels: { enabled: false },
-    stroke: { show: true, width: 2, colors: ['transparent'] },
+    stroke: { curve: 'smooth', width: 3 },
+    markers: {
+      size: 5,
+      hover: {
+        size: 7,
+      },
+    },
     xaxis: { categories: categories, labels: { style: { colors: '#64748b' } } },
     yaxis: {
       title: { text: undefined },
@@ -54,9 +68,8 @@ export const MonthlySummaryChart = ({
         formatter: (val) => `₹${val / 1000}k`,
       },
     },
-    fill: { opacity: 1 },
     tooltip: {
-      theme: theme === 'dark' ? 'dark' : 'light', // Set tooltip theme dynamically
+      theme: theme === 'dark' ? 'dark' : 'light',
       y: { formatter: (val) => `₹${val.toFixed(2)}` },
     },
     colors: ['#22c55e', '#ef4444'],
@@ -103,7 +116,7 @@ export const MonthlySummaryChart = ({
         <ApexChart
           options={chartOptions}
           series={series}
-          type='bar'
+          type='line'
           height={350}
         />
       </CardContent>
