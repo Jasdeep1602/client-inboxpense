@@ -28,28 +28,51 @@ export const DashboardSkeleton = () => (
       </CardContent>
     </Card>
 
+    {/* Skeleton for the new Summary Card */}
+    <Card>
+      <CardHeader>
+        <Skeleton className='h-6 w-1/2' />
+        <Skeleton className='h-4 w-1/3' />
+      </CardHeader>
+      <CardContent className='space-y-4'>
+        <Skeleton className='h-8 w-1/3' />
+        <Skeleton className='h-4 w-full rounded-full' />
+        <div className='space-y-2 pt-2'>
+          <Skeleton className='h-5 w-full' />
+          <Skeleton className='h-5 w-full' />
+          <Skeleton className='h-5 w-full' />
+        </div>
+      </CardContent>
+    </Card>
+
     {/* Skeleton for the Chart Grid */}
-    <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-5'>
-      <div className='lg:col-span-3'>
-        <Card>
-          <CardHeader>
-            <Skeleton className='h-7 w-1/4' />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className='h-[300px] w-full' />
-          </CardContent>
-        </Card>
-      </div>
-      <div className='lg:col-span-2'>
-        <Card>
-          <CardHeader>
-            <Skeleton className='h-7 w-1/3' />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className='h-[300px] w-full' />
-          </CardContent>
-        </Card>
-      </div>
+    <div className='grid gap-6 md:grid-cols-1 lg:grid-cols-2'>
+      <Card>
+        <CardHeader>
+          <Skeleton className='h-7 w-1/4' />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className='h-[300px] w-full' />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className='h-7 w-1/3' />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className='h-[300px] w-full' />
+        </CardContent>
+      </Card>
     </div>
+
+    {/* Skeleton for the new Account Performance Chart */}
+    <Card>
+      <CardHeader>
+        <Skeleton className='h-7 w-1/2' />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className='h-[350px] w-full' />
+      </CardContent>
+    </Card>
   </div>
 );

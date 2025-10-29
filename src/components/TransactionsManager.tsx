@@ -19,14 +19,8 @@ import {
   CardTitle,
 } from './ui/card';
 import { Badge } from './ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Icon, IconName } from './Icons';
-import { MoreHorizontal, Download, Plus, Minus } from 'lucide-react';
+import { Download, Plus, Minus } from 'lucide-react';
 import { TransactionDetailSheet } from './TransactionDetailSheet';
 import { AddTransactionDialog } from './AddTransactionDialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';

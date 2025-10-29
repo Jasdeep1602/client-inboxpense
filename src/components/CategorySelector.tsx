@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +22,14 @@ import apiClient from '@/lib/apiClient';
 import { Icon, IconName } from './Icons';
 import { Transaction } from './TransactionsManager';
 
-// Type Definitions
+// --- Type Definitions ---
+enum CategoryGroup {
+  EXPENSE = 'EXPENSE',
+  BUDGET = 'BUDGET',
+  INVESTMENT = 'INVESTMENT',
+  IGNORED = 'IGNORED',
+}
+
 type Subcategory = {
   _id: string;
   name: string;
@@ -35,6 +42,7 @@ type Category = {
   name: string;
   icon: string;
   color: string;
+  group: CategoryGroup;
   subcategories: Subcategory[];
 };
 
@@ -80,6 +88,23 @@ export function CategorySelector({
     }
   };
 
+  const groupedCategories = useMemo(() => {
+    return {
+      [CategoryGroup.EXPENSE]: categories.filter(
+        (c) => c.group === CategoryGroup.EXPENSE
+      ),
+      [CategoryGroup.BUDGET]: categories.filter(
+        (c) => c.group === CategoryGroup.BUDGET
+      ),
+      [CategoryGroup.INVESTMENT]: categories.filter(
+        (c) => c.group === CategoryGroup.INVESTMENT
+      ),
+      [CategoryGroup.IGNORED]: categories.filter(
+        (c) => c.group === CategoryGroup.IGNORED
+      ),
+    };
+  }, [categories]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -108,50 +133,67 @@ export function CategorySelector({
           Assign Category
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
         <DropdownMenuGroup className='max-h-[250px] overflow-y-auto'>
-          {categories.map((category) =>
-            category.subcategories.length > 0 ? (
-              <DropdownMenuSub key={category._id}>
+          {Object.entries(groupedCategories).map(([group, cats]) =>
+            cats.length > 0 ? (
+              <DropdownMenuSub key={group}>
                 <DropdownMenuSubTrigger>
-                  <Icon
-                    name={category.icon as IconName}
-                    categoryName={category.name}
-                    className='w-4 h-4 mr-2'
-                    style={{ color: category.color }}
-                  />
-                  <span>{category.name}</span>
+                  <span className='capitalize'>{group.toLowerCase()}</span>
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
-                    {category.subcategories.map((subcategory) => (
-                      <DropdownMenuItem
-                        key={subcategory._id}
-                        onSelect={() => handleSelect(subcategory._id)}>
-                        <Icon
-                          name={subcategory.icon as IconName}
-                          categoryName={subcategory.name}
-                          className='w-4 h-4 mr-2'
-                          style={{ color: subcategory.color }}
-                        />
-                        <span>{subcategory.name}</span>
-                      </DropdownMenuItem>
-                    ))}
+                    {cats.map((category) =>
+                      category.subcategories.length > 0 ? (
+                        <DropdownMenuSub key={category._id}>
+                          <DropdownMenuSubTrigger>
+                            <Icon
+                              name={category.icon as IconName}
+                              categoryName={category.name}
+                              className='w-4 h-4 mr-2'
+                              style={{ color: category.color }}
+                            />
+                            <span>{category.name}</span>
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {category.subcategories.map((subcategory) => (
+                                <DropdownMenuItem
+                                  key={subcategory._id}
+                                  onSelect={() =>
+                                    handleSelect(subcategory._id)
+                                  }>
+                                  <Icon
+                                    name={subcategory.icon as IconName}
+                                    categoryName={subcategory.name}
+                                    className='w-4 h-4 mr-2'
+                                    style={{ color: subcategory.color }}
+                                  />
+                                  <span>{subcategory.name}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      ) : (
+                        <DropdownMenuItem key={category._id} disabled>
+                          <Icon
+                            name={category.icon as IconName}
+                            categoryName={category.name}
+                            className='w-4 h-4 mr-2'
+                            style={{ color: category.color }}
+                          />
+                          <span>{category.name}</span>
+                        </DropdownMenuItem>
+                      )
+                    )}
                   </DropdownMenuSubContent>
                 </DropdownMenuPortal>
               </DropdownMenuSub>
-            ) : (
-              <DropdownMenuItem key={category._id} disabled>
-                <Icon
-                  name={category.icon as IconName}
-                  categoryName={category.name}
-                  className='w-4 h-4 mr-2'
-                  style={{ color: category.color }}
-                />
-                <span>{category.name}</span>
-              </DropdownMenuItem>
-            )
+            ) : null
           )}
         </DropdownMenuGroup>
+
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => handleSelect(null)}>
           <X className='mr-2 h-4 w-4' />

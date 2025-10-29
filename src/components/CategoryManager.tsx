@@ -31,6 +31,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -44,16 +52,22 @@ import { Icon, IconName } from './Icons';
 import apiClient from '@/lib/apiClient';
 import { Skeleton } from './ui/skeleton';
 import { Badge } from './ui/badge';
-import { ColorPicker } from './ColorPicker'; // <-- IMPORT THE NEW COMPONENT
-import { Controller } from 'react-hook-form'; // <-- IMPORT CONTROLLER
+import { ColorPicker } from './ColorPicker';
+import { Controller } from 'react-hook-form';
 
 // --- Type Definitions ---
+enum CategoryGroup {
+  EXPENSE = 'EXPENSE',
+  BUDGET = 'BUDGET',
+  INVESTMENT = 'INVESTMENT',
+  IGNORED = 'IGNORED',
+}
+
 type Subcategory = {
   _id: string;
   name: string;
   icon: string;
   color: string;
-  isDefault: boolean;
 };
 
 type Category = {
@@ -61,13 +75,14 @@ type Category = {
   name: string;
   icon: string;
   color: string;
-  isDefault: boolean;
+  group: CategoryGroup;
   subcategories: Subcategory[];
 };
 
 type CategoryFormData = {
   name: string;
   color: string;
+  group: CategoryGroup;
 };
 
 // --- Add/Edit Dialog Component ---
@@ -96,6 +111,7 @@ const CategoryDialog = ({
       reset({
         name: category?.name || '',
         color: category?.color || '#888888',
+        group: (category as Category)?.group || CategoryGroup.EXPENSE,
       });
     }
   }, [isOpen, category, reset]);
@@ -154,6 +170,39 @@ const CategoryDialog = ({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className='space-y-4 pt-4'>
+          {!parentId && (
+            <Controller
+              control={control}
+              name='group'
+              render={({ field }) => (
+                <div>
+                  <Label>Group</Label>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder='Select a group' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={CategoryGroup.EXPENSE}>
+                        Expenses
+                      </SelectItem>
+                      <SelectItem value={CategoryGroup.BUDGET}>
+                        Budget
+                      </SelectItem>
+                      <SelectItem value={CategoryGroup.INVESTMENT}>
+                        Investments
+                      </SelectItem>
+                      <SelectItem value={CategoryGroup.IGNORED}>
+                        Ignored
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            />
+          )}
+
           <div>
             <Label htmlFor='name'>Name</Label>
             <Input
@@ -231,6 +280,92 @@ const DeleteCategoryDialog = ({
   );
 };
 
+// --- Category Accordion Component ---
+const CategoryList = ({
+  categories,
+  onSuccess,
+}: {
+  categories: Category[];
+  onSuccess: () => void;
+}) => (
+  <Accordion type='multiple' className='w-full space-y-2'>
+    {categories.map((cat) => (
+      <AccordionItem
+        value={cat._id}
+        key={cat._id}
+        className='border-b-0 rounded-md bg-muted/50'>
+        <div className='flex items-center p-2 rounded-md group'>
+          <Icon
+            name={cat.icon as IconName}
+            categoryName={cat.name}
+            className='h-5 w-5 mr-3 flex-shrink-0'
+            style={{ color: cat.color }}
+          />
+          <AccordionTrigger className='flex-1 text-left font-semibold py-0 hover:no-underline'>
+            <div className='flex items-center gap-2'>
+              {cat.name}
+              {cat.subcategories.length > 0 && (
+                <Badge variant='secondary' className='h-5'>
+                  {cat.subcategories.length}
+                </Badge>
+              )}
+            </div>
+          </AccordionTrigger>
+          <div className='flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity'>
+            <CategoryDialog
+              mode='add'
+              parentId={cat._id}
+              onSuccess={onSuccess}
+            />
+
+            <CategoryDialog mode='edit' category={cat} onSuccess={onSuccess} />
+            <DeleteCategoryDialog
+              category={cat}
+              isParent={true}
+              onSuccess={onSuccess}
+            />
+          </div>
+        </div>
+        <AccordionContent className='pt-2 pb-2 pl-8 pr-2 space-y-1 border-l-2 ml-4 border-dashed'>
+          {cat.subcategories.map((sub) => (
+            <div
+              key={sub._id}
+              className='flex items-center justify-between p-2 rounded-md hover:bg-background/50 group'>
+              <div className='flex items-center gap-3'>
+                <Icon
+                  name={sub.icon as IconName}
+                  categoryName={sub.name}
+                  className='h-5 w-5'
+                  style={{ color: sub.color }}
+                />
+                <span className='text-sm'>{sub.name}</span>
+              </div>
+              <div className='flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+                <CategoryDialog
+                  mode='edit'
+                  category={sub}
+                  parentId={cat._id}
+                  onSuccess={onSuccess}
+                />
+                <DeleteCategoryDialog
+                  category={sub}
+                  isParent={false}
+                  onSuccess={onSuccess}
+                />
+              </div>
+            </div>
+          ))}
+          {cat.subcategories.length === 0 && (
+            <p className='text-xs text-muted-foreground pl-4 py-2'>
+              No subcategories yet. Click the &#39;+&#39; to add one.
+            </p>
+          )}
+        </AccordionContent>
+      </AccordionItem>
+    ))}
+  </Accordion>
+);
+
 // --- Main CategoryManager Component ---
 export const CategoryManager = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -257,14 +392,22 @@ export const CategoryManager = () => {
     router.refresh();
   };
 
-  const defaultCategories = useMemo(
-    () => categories.filter((c) => c.isDefault),
-    [categories]
-  );
-  const customCategories = useMemo(
-    () => categories.filter((c) => !c.isDefault),
-    [categories]
-  );
+  const groupedCategories = useMemo(() => {
+    return {
+      [CategoryGroup.EXPENSE]: categories.filter(
+        (c) => c.group === CategoryGroup.EXPENSE
+      ),
+      [CategoryGroup.BUDGET]: categories.filter(
+        (c) => c.group === CategoryGroup.BUDGET
+      ),
+      [CategoryGroup.INVESTMENT]: categories.filter(
+        (c) => c.group === CategoryGroup.INVESTMENT
+      ),
+      [CategoryGroup.IGNORED]: categories.filter(
+        (c) => c.group === CategoryGroup.IGNORED
+      ),
+    };
+  }, [categories]);
 
   if (isLoading) {
     return (
@@ -294,89 +437,40 @@ export const CategoryManager = () => {
         <CategoryDialog mode='add' onSuccess={handleSuccess} />
       </CardHeader>
       <CardContent>
-        <Accordion type='multiple' className='w-full space-y-2'>
-          {[...customCategories, ...defaultCategories].map((cat) => (
-            <AccordionItem
-              value={cat._id}
-              key={cat._id}
-              className='border-b-0 rounded-md bg-muted/50'>
-              <div className='flex items-center p-2 rounded-md group'>
-                <Icon
-                  name={cat.icon as IconName}
-                  categoryName={cat.name}
-                  className='h-5 w-5 mr-3 flex-shrink-0'
-                  style={{ color: cat.color }}
-                />
-                <AccordionTrigger className='flex-1 text-left font-semibold py-0 hover:no-underline'>
-                  <div className='flex items-center gap-2'>
-                    {cat.name}
-                    {cat.subcategories.length > 0 && (
-                      <Badge variant='secondary' className='h-5'>
-                        {cat.subcategories.length}
-                      </Badge>
-                    )}
-                  </div>
-                </AccordionTrigger>
-                <div className='flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity'>
-                  <CategoryDialog
-                    mode='add'
-                    parentId={cat._id}
-                    onSuccess={handleSuccess}
-                  />
-                  {!cat.isDefault && (
-                    <>
-                      <CategoryDialog
-                        mode='edit'
-                        category={cat}
-                        onSuccess={handleSuccess}
-                      />
-                      <DeleteCategoryDialog
-                        category={cat}
-                        isParent={true}
-                        onSuccess={handleSuccess}
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-              <AccordionContent className='pt-2 pb-2 pl-8 pr-2 space-y-1 border-l-2 ml-4 border-dashed'>
-                {cat.subcategories.map((sub) => (
-                  <div
-                    key={sub._id}
-                    className='flex items-center justify-between p-2 rounded-md hover:bg-background/50 group'>
-                    <div className='flex items-center gap-3'>
-                      <Icon
-                        name={sub.icon as IconName}
-                        categoryName={sub.name}
-                        className='h-5 w-5'
-                        style={{ color: sub.color }}
-                      />
-                      <span className='text-sm'>{sub.name}</span>
-                    </div>
-                    <div className='flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
-                      <CategoryDialog
-                        mode='edit'
-                        category={sub}
-                        parentId={cat._id}
-                        onSuccess={handleSuccess}
-                      />
-                      <DeleteCategoryDialog
-                        category={sub}
-                        isParent={false}
-                        onSuccess={handleSuccess}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {cat.subcategories.length === 0 && (
-                  <p className='text-xs text-muted-foreground pl-4 py-2'>
-                    No subcategories yet. Click the &#39;+&#39; to add one.
-                  </p>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <Tabs defaultValue={CategoryGroup.EXPENSE} className='w-full'>
+          <TabsList>
+            <TabsTrigger value={CategoryGroup.EXPENSE}>Expenses</TabsTrigger>
+            <TabsTrigger value={CategoryGroup.BUDGET}>Budget</TabsTrigger>
+            <TabsTrigger value={CategoryGroup.INVESTMENT}>
+              Investments
+            </TabsTrigger>
+            <TabsTrigger value={CategoryGroup.IGNORED}>Ignored</TabsTrigger>
+          </TabsList>
+          <TabsContent value={CategoryGroup.EXPENSE} className='pt-4'>
+            <CategoryList
+              categories={groupedCategories.EXPENSE}
+              onSuccess={handleSuccess}
+            />
+          </TabsContent>
+          <TabsContent value={CategoryGroup.BUDGET} className='pt-4'>
+            <CategoryList
+              categories={groupedCategories.BUDGET}
+              onSuccess={handleSuccess}
+            />
+          </TabsContent>
+          <TabsContent value={CategoryGroup.INVESTMENT} className='pt-4'>
+            <CategoryList
+              categories={groupedCategories.INVESTMENT}
+              onSuccess={handleSuccess}
+            />
+          </TabsContent>
+          <TabsContent value={CategoryGroup.IGNORED} className='pt-4'>
+            <CategoryList
+              categories={groupedCategories.IGNORED}
+              onSuccess={handleSuccess}
+            />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

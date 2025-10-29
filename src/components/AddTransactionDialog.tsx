@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar } from './ui/calendar';
 import {
   Select,
   SelectContent,
@@ -49,11 +49,21 @@ import { format } from 'date-fns';
 import apiClient from '@/lib/apiClient';
 import { Icon, IconName } from './Icons';
 
-// Correct Type Definitions
-type Subcategory = { _id: string; name: string };
+// Type Definitions
+enum CategoryGroup {
+  EXPENSE = 'EXPENSE',
+  BUDGET = 'BUDGET',
+  INVESTMENT = 'INVESTMENT',
+  IGNORED = 'IGNORED',
+}
+
+type Subcategory = { _id: string; name: string; icon: string; color: string };
 type Category = {
   _id: string;
   name: string;
+  icon: string;
+  color: string;
+  group: CategoryGroup;
   subcategories: Subcategory[];
 };
 type SourceMapping = { _id: string; mappingName: string; type: string };
@@ -66,7 +76,7 @@ type FormData = {
   mode: string;
   source: string;
   subcategoryId?: string;
-  accountType?: string; // <-- ADD THIS
+  accountType?: string;
 };
 
 export function AddTransactionDialog() {
@@ -97,7 +107,6 @@ export function AddTransactionDialog() {
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset custom state when dialog closes
       setSelectedSubcategory(null);
     } else {
       const fetchData = async () => {
@@ -133,6 +142,23 @@ export function AddTransactionDialog() {
     setSelectedSubcategory(subcategory);
     setValue('subcategoryId', subcategory?._id, { shouldValidate: true });
   };
+
+  const groupedCategories = useMemo(() => {
+    return {
+      [CategoryGroup.EXPENSE]: categories.filter(
+        (c) => c.group === CategoryGroup.EXPENSE
+      ),
+      [CategoryGroup.BUDGET]: categories.filter(
+        (c) => c.group === CategoryGroup.BUDGET
+      ),
+      [CategoryGroup.INVESTMENT]: categories.filter(
+        (c) => c.group === CategoryGroup.INVESTMENT
+      ),
+      [CategoryGroup.IGNORED]: categories.filter(
+        (c) => c.group === CategoryGroup.IGNORED
+      ),
+    };
+  }, [categories]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -256,7 +282,15 @@ export function AddTransactionDialog() {
                   role='combobox'
                   className='w-full justify-between font-normal'>
                   {selectedSubcategory ? (
-                    <>{selectedSubcategory.name}</>
+                    <>
+                      <Icon
+                        name={selectedSubcategory.icon as IconName}
+                        categoryName={selectedSubcategory.name}
+                        className='w-4 h-4 mr-2'
+                        style={{ color: selectedSubcategory.color }}
+                      />
+                      {selectedSubcategory.name}
+                    </>
                   ) : (
                     'Select a category'
                   )}
@@ -267,29 +301,72 @@ export function AddTransactionDialog() {
                 <DropdownMenuLabel>Assign Category</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup className='max-h-[200px] overflow-y-auto'>
-                  {categories.map((category) =>
-                    category.subcategories.length > 0 ? (
-                      <DropdownMenuSub key={category._id}>
+                  {Object.entries(groupedCategories).map(([group, cats]) =>
+                    cats.length > 0 ? (
+                      <DropdownMenuSub key={group}>
                         <DropdownMenuSubTrigger>
-                          <span>{category.name}</span>
+                          <span className='capitalize'>
+                            {group.toLowerCase()}
+                          </span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                           <DropdownMenuSubContent>
-                            {category.subcategories.map((sub) => (
-                              <DropdownMenuItem
-                                key={sub._id}
-                                onSelect={() => handleSubcategorySelect(sub)}>
-                                <span>{sub.name}</span>
-                              </DropdownMenuItem>
-                            ))}
+                            {cats.map((category) =>
+                              category.subcategories.length > 0 ? (
+                                <DropdownMenuSub key={category._id}>
+                                  <DropdownMenuSubTrigger>
+                                    <Icon
+                                      name={category.icon as IconName}
+                                      categoryName={category.name}
+                                      className='w-4 h-4 mr-2'
+                                      style={{ color: category.color }}
+                                    />
+                                    <span>{category.name}</span>
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                      {category.subcategories.map(
+                                        (subcategory) => (
+                                          <DropdownMenuItem
+                                            key={subcategory._id}
+                                            onSelect={() =>
+                                              handleSubcategorySelect(
+                                                subcategory
+                                              )
+                                            }>
+                                            <Icon
+                                              name={
+                                                subcategory.icon as IconName
+                                              }
+                                              categoryName={subcategory.name}
+                                              className='w-4 h-4 mr-2'
+                                              style={{
+                                                color: subcategory.color,
+                                              }}
+                                            />
+                                            <span>{subcategory.name}</span>
+                                          </DropdownMenuItem>
+                                        )
+                                      )}
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                              ) : (
+                                <DropdownMenuItem key={category._id} disabled>
+                                  <Icon
+                                    name={category.icon as IconName}
+                                    categoryName={category.name}
+                                    className='w-4 h-4 mr-2'
+                                    style={{ color: category.color }}
+                                  />
+                                  <span>{category.name}</span>
+                                </DropdownMenuItem>
+                              )
+                            )}
                           </DropdownMenuSubContent>
                         </DropdownMenuPortal>
                       </DropdownMenuSub>
-                    ) : (
-                      <DropdownMenuItem key={category._id} disabled>
-                        <span>{category.name}</span>
-                      </DropdownMenuItem>
-                    )
+                    ) : null
                   )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>

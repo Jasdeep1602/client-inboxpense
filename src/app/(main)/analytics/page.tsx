@@ -21,6 +21,8 @@ import { MonthlySummaryChart } from '@/components/MonthlySummaryChart';
 import { CategorySpendingChart } from '@/components/CategorySpendingChart';
 import { AnalyticsDetailSheet } from '@/components/AnalyticsDetailSheet';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
+import { CurrentMonthSummaryCard } from '@/components/CurrentMonthSummaryCard';
+import { AccountPerformanceChart } from '@/components/AccountPerformanceChart';
 import apiClient from '@/lib/apiClient';
 
 // --- Type Definitions for API Data ---
@@ -30,7 +32,12 @@ export type MonthlySummaryData = {
   totalDebit: number;
 };
 
-// This now represents a PARENT category's aggregated spending
+export type AccountData = {
+  account: string;
+  totalCredit: number;
+  totalDebit: number;
+};
+
 export type CategorySpendingData = {
   parentId: string;
   name: string;
@@ -38,7 +45,6 @@ export type CategorySpendingData = {
   value: number;
 };
 
-// This type is for the drill-down data, exported for use in the sheet
 export type SubcategoryBreakdownData = {
   name: string;
   color: string;
@@ -50,7 +56,6 @@ export type SourceMapping = {
   mappingName: string;
 };
 
-// The data passed to the detail sheet
 export type DetailData =
   | { type: 'month'; data: MonthlySummaryData }
   | { type: 'category'; data: CategorySpendingData };
@@ -59,9 +64,13 @@ export type DetailData =
 function AnalyticsData({
   monthlySummary,
   categorySpending,
+  accountPerformance,
+  currentSource,
 }: {
   monthlySummary: MonthlySummaryData[];
   categorySpending: CategorySpendingData[];
+  accountPerformance: AccountData[];
+  currentSource: string;
 }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedData, setSelectedData] = useState<DetailData | null>(null);
@@ -78,20 +87,18 @@ function AnalyticsData({
 
   return (
     <>
-      <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-5'>
-        <div className='lg:col-span-3'>
-          <MonthlySummaryChart
-            data={monthlySummary}
-            onMonthSelect={handleMonthSelect}
-          />
-        </div>
-        <div className='lg:col-span-2'>
-          <CategorySpendingChart
-            data={categorySpending}
-            onCategorySelect={handleCategorySelect}
-          />
-        </div>
+      <CurrentMonthSummaryCard source={currentSource} />
+      <div className='grid gap-6 md:grid-cols-1 lg:grid-cols-2'>
+        <MonthlySummaryChart
+          data={monthlySummary}
+          onMonthSelect={handleMonthSelect}
+        />
+        <CategorySpendingChart
+          data={categorySpending}
+          onCategorySelect={handleCategorySelect}
+        />
       </div>
+      <AccountPerformanceChart data={accountPerformance} />
       <AnalyticsDetailSheet
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
@@ -117,6 +124,9 @@ function AnalyticsView() {
   const [categorySpending, setCategorySpending] = useState<
     CategorySpendingData[]
   >([]);
+  const [accountPerformance, setAccountPerformance] = useState<AccountData[]>(
+    []
+  );
   const [accounts, setAccounts] = useState<SourceMapping[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -124,15 +134,17 @@ function AnalyticsView() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [monthlyRes, categoryRes, accountsRes] = await Promise.all([
-          apiClient.get(
-            `/api/summary/monthly?source=${currentSource}&account=${currentAccount}&period=${currentPeriod}`
-          ),
-          apiClient.get(
-            `/api/summary/spending-by-category?source=${currentSource}&period=${currentPeriod}`
-          ),
-          apiClient.get('/api/mappings'),
-        ]);
+        const [monthlyRes, categoryRes, accountsRes, accountPerformanceRes] =
+          await Promise.all([
+            apiClient.get(
+              `/api/summary/monthly?source=${currentSource}&account=${currentAccount}&period=${currentPeriod}`
+            ),
+            apiClient.get(
+              `/api/summary/spending-by-category?source=${currentSource}&period=${currentPeriod}&account=${currentAccount}`
+            ),
+            apiClient.get('/api/mappings'),
+            apiClient.get(`/api/summary/by-account?period=${currentPeriod}`),
+          ]);
 
         setMonthlySummary(
           Array.isArray(monthlyRes.data) ? monthlyRes.data : []
@@ -141,11 +153,17 @@ function AnalyticsView() {
           Array.isArray(categoryRes.data) ? categoryRes.data : []
         );
         setAccounts(Array.isArray(accountsRes.data) ? accountsRes.data : []);
+        setAccountPerformance(
+          Array.isArray(accountPerformanceRes.data)
+            ? accountPerformanceRes.data
+            : []
+        );
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
         setMonthlySummary([]);
         setCategorySpending([]);
         setAccounts([]);
+        setAccountPerformance([]);
       } finally {
         setIsLoading(false);
       }
@@ -228,6 +246,8 @@ function AnalyticsView() {
         <AnalyticsData
           monthlySummary={monthlySummary}
           categorySpending={categorySpending}
+          accountPerformance={accountPerformance}
+          currentSource={currentSource}
         />
       )}
     </div>
