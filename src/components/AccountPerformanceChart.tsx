@@ -7,7 +7,6 @@ import { useTheme } from 'next-themes';
 
 type AccountData = {
   account: string;
-  totalCredit: number;
   totalDebit: number;
 };
 
@@ -18,12 +17,12 @@ export const AccountPerformanceChart = ({ data }: { data: AccountData[] }) => {
     chart: {
       type: 'bar',
       height: 350,
-      stacked: false,
       toolbar: { show: false },
     },
     plotOptions: {
       bar: {
         horizontal: true,
+        barHeight: '60%',
       },
     },
     dataLabels: { enabled: false },
@@ -31,12 +30,7 @@ export const AccountPerformanceChart = ({ data }: { data: AccountData[] }) => {
       categories: data.map((d) => d.account),
       labels: {
         style: { colors: '#64748b' },
-        formatter: (val) => {
-          const num = Number(val);
-          return Number.isFinite(num)
-            ? `₹${(num / 1000).toFixed(0)}k`
-            : String(val);
-        },
+        formatter: (val) => `₹${Number(val) / 1000}k`,
       },
     },
     yaxis: {
@@ -51,14 +45,12 @@ export const AccountPerformanceChart = ({ data }: { data: AccountData[] }) => {
       theme: theme === 'dark' ? 'dark' : 'light',
       y: {
         formatter: (val) => `₹${val.toFixed(2)}`,
+        title: {
+          formatter: () => 'Spending',
+        },
       },
     },
-    colors: ['#22c55e', '#ef4444'],
-    legend: {
-      position: 'top',
-      horizontalAlign: 'right',
-      labels: { colors: '#64748b' },
-    },
+    colors: ['#ef4444'],
     grid: {
       borderColor: theme === 'dark' ? '#374151' : '#e2e8f0',
       strokeDashArray: 4,
@@ -67,10 +59,7 @@ export const AccountPerformanceChart = ({ data }: { data: AccountData[] }) => {
     },
   };
 
-  const series = [
-    { name: 'Credit', data: data.map((d) => d.totalCredit) },
-    { name: 'Debit', data: data.map((d) => d.totalDebit) },
-  ];
+  const series = [{ name: 'Debit', data: data.map((d) => d.totalDebit) }];
 
   if (!data || data.length === 0) {
     return (
@@ -80,7 +69,7 @@ export const AccountPerformanceChart = ({ data }: { data: AccountData[] }) => {
         </CardHeader>
         <CardContent>
           <div className='h-[350px] flex items-center justify-center text-muted-foreground text-sm'>
-            No data available for mapped accounts in this period.
+            No spending data available for mapped accounts in this period.
           </div>
         </CardContent>
       </Card>

@@ -31,7 +31,7 @@ const ProgressBar = ({
 
   if (isOverBudget) {
     return (
-      <div className='w-full bg-destructive/20 h-3 rounded-lg overflow-hidden'>
+      <div className='w-full bg-destructive/20 h-4 rounded-lg overflow-hidden'>
         <div
           className='bg-destructive h-full transition-all duration-500 ease-out'
           style={{ width: '100%' }}
@@ -44,7 +44,7 @@ const ProgressBar = ({
   const investmentPercentage = budget > 0 ? (investments / budget) * 100 : 0;
 
   return (
-    <div className='w-full bg-muted h-3 rounded-lg flex overflow-hidden'>
+    <div className='w-full bg-muted h-4 rounded-lg flex overflow-hidden'>
       <div
         className='bg-emerald-500 h-full transition-all duration-500 ease-out'
         style={{ width: `${expensePercentage}%` }}
@@ -77,7 +77,13 @@ const LegendItem = ({
   </div>
 );
 
-export const CurrentMonthSummaryCard = ({ source }: { source: string }) => {
+export const CurrentMonthSummaryCard = ({
+  source,
+  month,
+}: {
+  source: string;
+  month: string;
+}) => {
   const [data, setData] = useState<OverviewData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -86,7 +92,7 @@ export const CurrentMonthSummaryCard = ({ source }: { source: string }) => {
       setIsLoading(true);
       try {
         const response = await apiClient.get(
-          `/api/summary/current-month-overview?source=${source}`
+          `/api/summary/current-month-overview?source=${source}&month=${month}`
         );
         setData(response.data);
       } catch (error) {
@@ -97,18 +103,18 @@ export const CurrentMonthSummaryCard = ({ source }: { source: string }) => {
       }
     };
     fetchData();
-  }, [source]);
+  }, [source, month]);
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
           <Skeleton className='h-6 w-1/2' />
-          <Skeleton className='h-3 w-1/3' />
+          <Skeleton className='h-4 w-1/3' />
         </CardHeader>
         <CardContent className='space-y-4'>
           <Skeleton className='h-8 w-1/3' />
-          <Skeleton className='h-3 w-full rounded-full' />
+          <Skeleton className='h-4 w-full rounded-full' />
           <div className='space-y-2 pt-2'>
             <Skeleton className='h-5 w-full' />
             <Skeleton className='h-5 w-full' />
@@ -123,15 +129,15 @@ export const CurrentMonthSummaryCard = ({ source }: { source: string }) => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Current Month Summary</CardTitle>
+          <CardTitle>Monthly Budget Summary</CardTitle>
           <CardDescription>
-            Your budget performance for this month.
+            Your budget performance for the selected month.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className='flex items-center justify-center h-24'>
             <p className='text-sm text-muted-foreground text-center'>
-              No budget transactions found for the current month.
+              No budget transactions found for this period.
               <br />
               Categorize an income transaction under the &apos;Budget&apos;
               group to start.
@@ -150,9 +156,9 @@ export const CurrentMonthSummaryCard = ({ source }: { source: string }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Current Month Summary</CardTitle>
+        <CardTitle>Monthly Budget Summary</CardTitle>
         <CardDescription>
-          Your budget performance for this month.
+          Your budget performance for the selected month.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>

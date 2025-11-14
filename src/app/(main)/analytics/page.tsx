@@ -17,13 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MonthlySummaryChart } from '@/components/MonthlySummaryChart';
 import { CategorySpendingChart } from '@/components/CategorySpendingChart';
 import { AnalyticsDetailSheet } from '@/components/AnalyticsDetailSheet';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
 import { CurrentMonthSummaryCard } from '@/components/CurrentMonthSummaryCard';
 import { AccountPerformanceChart } from '@/components/AccountPerformanceChart';
 import apiClient from '@/lib/apiClient';
+import { subMonths, format } from 'date-fns';
 
 // --- Type Definitions for API Data ---
 export type MonthlySummaryData = {
@@ -34,7 +34,6 @@ export type MonthlySummaryData = {
 
 export type AccountData = {
   account: string;
-  totalCredit: number;
   totalDebit: number;
 };
 
@@ -62,23 +61,18 @@ export type DetailData =
 
 // --- Main Data Display Component ---
 function AnalyticsData({
-  monthlySummary,
   categorySpending,
   accountPerformance,
   currentSource,
+  currentMonth,
 }: {
-  monthlySummary: MonthlySummaryData[];
   categorySpending: CategorySpendingData[];
   accountPerformance: AccountData[];
   currentSource: string;
+  currentMonth: string;
 }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedData, setSelectedData] = useState<DetailData | null>(null);
-
-  const handleMonthSelect = (data: MonthlySummaryData) => {
-    setSelectedData({ type: 'month', data });
-    setIsSheetOpen(true);
-  };
 
   const handleCategorySelect = (data: CategorySpendingData) => {
     setSelectedData({ type: 'category', data });
@@ -87,18 +81,14 @@ function AnalyticsData({
 
   return (
     <>
-      <CurrentMonthSummaryCard source={currentSource} />
+      <CurrentMonthSummaryCard source={currentSource} month={currentMonth} />
       <div className='grid gap-6 md:grid-cols-1 lg:grid-cols-2'>
-        <MonthlySummaryChart
-          data={monthlySummary}
-          onMonthSelect={handleMonthSelect}
-        />
         <CategorySpendingChart
           data={categorySpending}
           onCategorySelect={handleCategorySelect}
         />
+        <AccountPerformanceChart data={accountPerformance} />
       </div>
-      <AccountPerformanceChart data={accountPerformance} />
       <AnalyticsDetailSheet
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
@@ -115,44 +105,46 @@ function AnalyticsView() {
   const searchParams = useSearchParams();
 
   const currentSource = searchParams.get('source') || 'All';
-  const currentPeriod = searchParams.get('period') || '6m';
-  const currentAccount = searchParams.get('account') || 'All';
+  const currentMonth =
+    searchParams.get('month') || format(new Date(), 'yyyy-MM');
 
-  const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryData[]>(
-    []
-  );
   const [categorySpending, setCategorySpending] = useState<
     CategorySpendingData[]
   >([]);
   const [accountPerformance, setAccountPerformance] = useState<AccountData[]>(
     []
   );
-  const [accounts, setAccounts] = useState<SourceMapping[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Generate the last 12 months for the dropdown
+  const monthOptions = Array.from({ length: 13 }).map((_, i) => {
+    if (i === 0) {
+      return {
+        value: format(new Date(), 'yyyy-MM'),
+        label: 'Current Month',
+      };
+    }
+    const date = subMonths(new Date(), i);
+    return {
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'MMMM yyyy'),
+    };
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [monthlyRes, categoryRes, accountsRes, accountPerformanceRes] =
-          await Promise.all([
-            apiClient.get(
-              `/api/summary/monthly?source=${currentSource}&account=${currentAccount}&period=${currentPeriod}`
-            ),
-            apiClient.get(
-              `/api/summary/spending-by-category?source=${currentSource}&period=${currentPeriod}&account=${currentAccount}`
-            ),
-            apiClient.get('/api/mappings'),
-            apiClient.get(`/api/summary/by-account?period=${currentPeriod}`),
-          ]);
+        const [categoryRes, accountPerformanceRes] = await Promise.all([
+          apiClient.get(
+            `/api/summary/spending-by-category?source=${currentSource}&month=${currentMonth}`
+          ),
+          apiClient.get(`/api/summary/by-account?month=${currentMonth}`),
+        ]);
 
-        setMonthlySummary(
-          Array.isArray(monthlyRes.data) ? monthlyRes.data : []
-        );
         setCategorySpending(
           Array.isArray(categoryRes.data) ? categoryRes.data : []
         );
-        setAccounts(Array.isArray(accountsRes.data) ? accountsRes.data : []);
         setAccountPerformance(
           Array.isArray(accountPerformanceRes.data)
             ? accountPerformanceRes.data
@@ -160,26 +152,26 @@ function AnalyticsView() {
         );
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
-        setMonthlySummary([]);
         setCategorySpending([]);
-        setAccounts([]);
         setAccountPerformance([]);
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [currentSource, currentPeriod, currentAccount]);
+  }, [currentSource, currentMonth]);
 
   const handleFilterChange = (
-    filterType: 'source' | 'period' | 'account',
+    filterType: 'source' | 'month',
     value: string
   ) => {
     const params = new URLSearchParams(searchParams);
     params.set(filterType, value);
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
-
+  const selectedMonthLabel =
+    monthOptions.find((opt) => opt.value === currentMonth)?.label ||
+    'Select a month';
   return (
     <div className='p-4 sm:p-6 space-y-6'>
       <Card>
@@ -201,42 +193,20 @@ function AnalyticsView() {
             <ToggleGroupItem value='Mom'>Mom</ToggleGroupItem>
             <ToggleGroupItem value='Dad'>Dad</ToggleGroupItem>
           </ToggleGroup>
-          <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-            <Select
-              value={currentAccount}
-              onValueChange={(v) => handleFilterChange('account', v)}>
-              <SelectTrigger className='w-full sm:w-[180px]'>
-                <SelectValue placeholder='Select an account' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='All'>All Accounts</SelectItem>
-                {accounts.map((acc) => (
-                  <SelectItem key={acc._id} value={acc.mappingName}>
-                    {acc.mappingName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <ToggleGroup
-              type='single'
-              variant={'outline'}
-              defaultValue={currentPeriod}
-              onValueChange={(v) => v && handleFilterChange('period', v)}
-              className='w-full sm:w-auto'>
-              <ToggleGroupItem value='current' className='w-full'>
-                Current
-              </ToggleGroupItem>
-              <ToggleGroupItem value='lastMonth' className='w-full'>
-                Last Month
-              </ToggleGroupItem>
-              <ToggleGroupItem value='3m' className='w-full'>
-                3 Months
-              </ToggleGroupItem>
-              <ToggleGroupItem value='6m' className='w-full'>
-                6 Months
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          <Select
+            value={currentMonth}
+            onValueChange={(v) => handleFilterChange('month', v)}>
+            <SelectTrigger className='w-full sm:w-[200px]'>
+              <SelectValue>{selectedMonthLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -244,10 +214,10 @@ function AnalyticsView() {
         <DashboardSkeleton />
       ) : (
         <AnalyticsData
-          monthlySummary={monthlySummary}
           categorySpending={categorySpending}
           accountPerformance={accountPerformance}
           currentSource={currentSource}
+          currentMonth={currentMonth}
         />
       )}
     </div>

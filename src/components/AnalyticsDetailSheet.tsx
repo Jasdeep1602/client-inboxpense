@@ -32,6 +32,7 @@ interface AnalyticsDetailSheetProps {
 }
 
 const formatMonth = (monthStr: string) => {
+  if (!monthStr || !monthStr.includes('-')) return 'Invalid Date';
   const [year, month] = monthStr.split('-');
   return new Date(Date.UTC(Number(year), Number(month) - 1)).toLocaleString(
     'en-US',
@@ -49,7 +50,8 @@ const CategoryBreakdown = ({
 }) => {
   const searchParams = useSearchParams();
   const source = searchParams.get('source') || 'All';
-  const period = searchParams.get('period') || '6m';
+  const month =
+    searchParams.get('month') || new Date().toISOString().substring(0, 7);
 
   const [breakdown, setBreakdown] = useState<SubcategoryBreakdownData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +66,7 @@ const CategoryBreakdown = ({
         const response = await apiClient.get(
           '/api/summary/subcategory-breakdown',
           {
-            params: { source, period, parentId: category.parentId },
+            params: { source, month, parentId: category.parentId },
           }
         );
         const data = Array.isArray(response.data) ? response.data : [];
@@ -79,7 +81,7 @@ const CategoryBreakdown = ({
       }
     };
     fetchBreakdown();
-  }, [category.parentId, source, period, onTotalCalculated]);
+  }, [category.parentId, source, month, onTotalCalculated]);
 
   if (isLoading) {
     return (
@@ -104,7 +106,7 @@ const CategoryBreakdown = ({
   return (
     <div className='space-y-6 text-left pt-4'>
       <TooltipProvider>
-        <div className='flex w-full h-2  overflow-hidden bg-muted'>
+        <div className='flex w-full h-3 rounded-full overflow-hidden bg-muted'>
           {breakdown.map((sub) => (
             <Tooltip key={sub.name} delayDuration={0}>
               <TooltipTrigger asChild>

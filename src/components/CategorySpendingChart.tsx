@@ -5,6 +5,7 @@ import ApexChart from './ApexChart';
 import { ApexOptions } from 'apexcharts';
 import { useTheme } from 'next-themes';
 import { CategorySpendingData } from '@/app/(main)/analytics/page'; // Import type from page
+import { CHART_COLOR_PALETTE } from '@/lib/colors';
 
 export const CategorySpendingChart = ({
   data,
@@ -15,55 +16,68 @@ export const CategorySpendingChart = ({
 }) => {
   const { theme } = useTheme();
 
-  const totalSpending = data.reduce((sum, item) => sum + item.value, 0);
-
-  const series =
-    totalSpending > 0
-      ? data.map((item) =>
-          parseFloat(((item.value / totalSpending) * 100).toFixed(2))
-        )
-      : [];
-
+  const series = data.map((item) => item.value);
   const labels = data.map((item) => item.name);
-  const colors = data.map((item) => item.color);
 
   const chartOptions: ApexOptions = {
     chart: {
-      type: 'radialBar',
+      type: 'donut',
       height: 350,
-      toolbar: { show: false },
       events: {
         dataPointSelection: (event, chartContext, config) => {
-          const selectedIndex = config.dataPointIndex;
-          onCategorySelect(data[selectedIndex]);
+          onCategorySelect(data[config.dataPointIndex]);
         },
       },
     },
-    plotOptions: {
-      radialBar: {
-        hollow: {
-          margin: 15,
-          size: '30%',
-        },
-        dataLabels: {
-          show: true,
-          name: {
-            show: false,
-          },
-          value: {
-            show: true,
-            fontSize: '14px',
-            fontWeight: 'bold',
-            formatter: (val) => `${val}%`,
-          },
-        },
-        track: {
-          background: theme === 'dark' ? '#374151' : '#f1f5f9',
-        },
-      },
-    },
-    colors: colors,
     labels: labels,
+    colors: CHART_COLOR_PALETTE,
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '65%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              showAlways: true,
+              label: 'Total Spent',
+              fontSize: '14px',
+              color: theme === 'dark' ? '#9ca3af' : '#64748b',
+              formatter: (w) => {
+                const total = w.globals.seriesTotals.reduce(
+                  (a: number, b: number) => a + b,
+                  0
+                );
+                return `₹${total.toLocaleString('en-IN', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`;
+              },
+            },
+          },
+        },
+        expandOnClick: false,
+      },
+    },
+    // --- THIS IS THE DEFINITIVE FIX ---
+    // We use 'as any' here to bypass the incorrect TypeScript type
+    // definitions for this specific part of the ApexCharts library.
+    states: {
+      hover: {
+        filter: {
+          type: 'lighten',
+        },
+      },
+      active: {
+        filter: {
+          type: 'none',
+        },
+      },
+    } satisfies ApexOptions['states'],
+    // --- END FIX ---
+    dataLabels: {
+      enabled: false,
+    },
     legend: {
       show: true,
       position: 'bottom',
@@ -75,21 +89,14 @@ export const CategorySpendingChart = ({
       labels: {
         colors: theme === 'dark' ? '#9ca3af' : '#64748b',
       },
-      onItemHover: {
-        highlightDataSeries: true,
-      },
     },
     stroke: {
-      lineCap: 'round',
+      width: 0,
     },
     tooltip: {
       theme: theme === 'dark' ? 'dark' : 'light',
-      enabled: true,
       y: {
-        formatter: (val, { seriesIndex }) => {
-          const originalDataPoint = data[seriesIndex];
-          return `₹${originalDataPoint.value.toFixed(2)}`;
-        },
+        formatter: (val) => `₹${val.toFixed(2)}`,
       },
     },
   };
@@ -118,7 +125,7 @@ export const CategorySpendingChart = ({
         <ApexChart
           options={chartOptions}
           series={series}
-          type='radialBar'
+          type='donut'
           height={350}
         />
       </CardContent>
