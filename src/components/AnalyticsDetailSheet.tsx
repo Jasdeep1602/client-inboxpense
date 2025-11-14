@@ -24,6 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { CHART_COLOR_PALETTE } from '@/lib/colors';
 
 interface AnalyticsDetailSheetProps {
   data: DetailData | null;
@@ -70,7 +71,16 @@ const CategoryBreakdown = ({
           }
         );
         const data = Array.isArray(response.data) ? response.data : [];
-        setBreakdown(data);
+
+        // --- THIS IS THE FIX ---
+        // Programmatically assign colors from the palette to ensure uniqueness
+        const coloredData = data.map((item, index) => ({
+          ...item,
+          color: CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length],
+        }));
+        // --- END FIX ---
+
+        setBreakdown(coloredData);
         const trueTotal = data.reduce((sum, item) => sum + item.total, 0);
         setTotal(trueTotal);
         onTotalCalculated(trueTotal);
@@ -86,7 +96,7 @@ const CategoryBreakdown = ({
   if (isLoading) {
     return (
       <div className='space-y-4 pt-4'>
-        <Skeleton className='h-4 w-full rounded-full' />
+        <Skeleton className='h-4 w-full' />
         <div className='pt-4 space-y-3'>
           <Skeleton className='h-6 w-3/4' />
           <Skeleton className='h-6 w-1/2' />
@@ -106,7 +116,7 @@ const CategoryBreakdown = ({
   return (
     <div className='space-y-6 text-left pt-4'>
       <TooltipProvider>
-        <div className='flex w-full h-3 rounded-full overflow-hidden bg-muted'>
+        <div className='flex w-full h-2 overflow-hidden bg-muted'>
           {breakdown.map((sub) => (
             <Tooltip key={sub.name} delayDuration={0}>
               <TooltipTrigger asChild>
@@ -134,7 +144,7 @@ const CategoryBreakdown = ({
             className='flex items-center justify-between text-sm'>
             <div className='flex items-center gap-3'>
               <div
-                className='h-3 w-3 rounded-full flex-shrink-0'
+                className='h-3 w-3 flex-shrink-0'
                 style={{ backgroundColor: sub.color }}
               />
               <span className='font-medium text-foreground'>{sub.name}</span>
