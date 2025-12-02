@@ -26,6 +26,7 @@ import { AddTransactionDialog } from './AddTransactionDialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import apiClient from '@/lib/apiClient';
 import { DateRangeFilterDialog } from './DateRangeFilterDialog'; // Import the new dialog
+import { Button } from './ui/button';
 
 // --- TYPE DEFINITIONS ---
 export type Transaction = {
@@ -309,7 +310,43 @@ export const TransactionsManager = ({
       toast.error('Failed to download CSV file.', { id: toastId });
     }
   };
+  const handleDateRangeExport = async () => {
+    const toastId = toast.loading('Generating your CSV file...');
+    try {
+      const source = searchParams.get('source') || 'All';
+      const from = searchParams.get('from');
+      const to = searchParams.get('to');
 
+      const response = await apiClient.get('/api/export/csv-range', {
+        params: { source, from, to },
+        responseType: 'blob',
+      });
+
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `transactions-${source}-${from}-to-${to}.csv`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch && filenameMatch.length > 1) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Your download has started.', { id: toastId });
+    } catch (error) {
+      console.error('CSV Export Error:', error);
+      toast.error('Failed to download CSV file.', { id: toastId });
+    }
+  };
   const renderGroup = (group: TransactionGroup) => {
     const currentSource = searchParams.get('source') || 'All';
 
@@ -385,8 +422,14 @@ export const TransactionsManager = ({
             <CardTitle>Transactions</CardTitle>
             <CardDescription>Your financial activity</CardDescription>
           </div>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 flex-wrap'>
             <DateRangeFilterDialog />
+            {isDateFilterApplied && (
+              <Button variant='outline' onClick={handleDateRangeExport}>
+                <Download className='mr-2 h-4 w-4' />
+                Export
+              </Button>
+            )}
             <AddTransactionDialog />
           </div>
         </CardHeader>
